@@ -1,0 +1,329 @@
+import React, { useState } from 'react';
+import {
+  Bell,
+  ChevronDown,
+  FolderKanban,
+  LayoutDashboard,
+  ListOrdered,
+  LogOut,
+  Menu,
+  Plus,
+  UserCircle,
+  X,
+  ExternalLink,
+} from 'lucide-react';
+import { Link, NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { OrganizerAvatar } from '../components/OrganizerAvatar';
+import { WePayLogo } from '../components/WePayLogo';
+import { Button } from '../components/ui/Button';
+import { useAuth } from '../context/AuthContext';
+import { formatFullHeaderDate } from '../utils/formatters';
+
+const NAV_ITEMS = [
+  { to: '/dashboard', label: 'Overview', Icon: LayoutDashboard, end: true },
+  { to: '/dashboard/collections', label: 'My Collections', Icon: FolderKanban, end: false },
+  { to: '/dashboard/create', label: 'Create Collection', Icon: Plus, end: true },
+  { to: '/dashboard/transactions', label: 'Transactions', Icon: ListOrdered, end: true },
+  { to: '/dashboard/profile', label: 'Account / Profile', Icon: UserCircle, end: true },
+];
+
+export const OrganizerLayout: React.FC = () => {
+  const { organizer, isAuthenticated, isLoading, isMockMode, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const navigate = useNavigate();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-sm text-slate-600 font-medium">Loading organizer workspace...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !organizer) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+      isActive
+        ? 'bg-indigo-50 text-indigo-700'
+        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+    }`;
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex">
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white border-r border-slate-200 z-30">
+        <div className="h-16 px-5 flex items-center border-b border-slate-200">
+          <Link to="/dashboard" aria-label="WePay Dashboard Home">
+            <WePayLogo />
+          </Link>
+        </div>
+
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto" aria-label="Organizer navigation">
+          {NAV_ITEMS.map(({ to, label, Icon, end }) => (
+            <NavLink key={to} to={to} end={end} className={navLinkClass}>
+              <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="p-3 border-t border-slate-200 space-y-2">
+          <Link
+            to="/dashboard/profile"
+            className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+          >
+            <OrganizerAvatar
+              name={organizer.fullName}
+              avatarUrl={organizer.avatarUrl}
+              size="sm"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-slate-900 truncate">{organizer.fullName}</p>
+              <p className="text-[11px] text-slate-500 font-mono-num truncate">
+                @{organizer.handle}
+              </p>
+            </div>
+          </Link>
+          <Link
+            to={`/u/${organizer.handle}`}
+            className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+          >
+            <span className="truncate">@{organizer.handle} Hub</span>
+            <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          </Link>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+          >
+            <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile Drawer Overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-50 lg:hidden bg-slate-900/50"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <aside
+            className="w-72 max-w-[85vw] h-full bg-white border-r border-slate-200 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="h-16 px-4 flex items-center justify-between border-b border-slate-200">
+              <WePayLogo />
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Close navigation menu"
+                className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <nav className="flex-1 px-3 py-4 space-y-1">
+              {NAV_ITEMS.map(({ to, label, Icon, end }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={navLinkClass}
+                >
+                  <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span>{label}</span>
+                </NavLink>
+              ))}
+            </nav>
+            <div className="p-3 border-t border-slate-200 space-y-2">
+              <Link
+                to="/dashboard/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <OrganizerAvatar
+                  name={organizer.fullName}
+                  avatarUrl={organizer.avatarUrl}
+                  size="sm"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-slate-900 truncate">
+                    {organizer.fullName}
+                  </p>
+                  <p className="text-[11px] text-slate-500 font-mono-num truncate">
+                    @{organizer.handle}
+                  </p>
+                </div>
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 cursor-pointer"
+              >
+                <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>Logout</span>
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* Main Content Shell */}
+      <div className="flex-1 lg:pl-64 flex flex-col min-w-0">
+        {/* Top Header */}
+        <header className="sticky top-0 z-20 bg-white border-b border-slate-200">
+          <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(true)}
+                aria-label="Open navigation menu"
+                className="lg:hidden h-10 w-10 -ml-2 rounded-lg flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer shrink-0"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900 truncate">
+                  Welcome back, {organizer.fullName.split(' ')[0]}
+                </p>
+                <p className="text-xs text-slate-500 hidden sm:block truncate">
+                  {formatFullHeaderDate()}
+                  {isMockMode && ' · Prototype Sandbox Mode'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 shrink-0">
+              <Link to="/dashboard/create" className="hidden sm:inline-flex">
+                <Button size="sm">
+                  <Plus className="h-4 w-4" />
+                  <span>Create Collection</span>
+                </Button>
+              </Link>
+
+              {/* Notification Bell */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotifOpen((v) => !v);
+                    setProfileMenuOpen(false);
+                  }}
+                  aria-label="Workspace notifications"
+                  className="h-9 w-9 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 hover:text-slate-900 cursor-pointer"
+                >
+                  <Bell className="h-4 w-4" />
+                </button>
+                {notifOpen && (
+                  <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-lg p-3 z-40">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <span className="text-xs font-semibold text-slate-900">Activity Feed</span>
+                      <button
+                        type="button"
+                        onClick={() => setNotifOpen(false)}
+                        className="text-xs text-slate-500 hover:text-slate-900 cursor-pointer"
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <div className="py-2 space-y-2 text-xs text-slate-600">
+                      <p>
+                        Share any active collection link to test live contributor payments and
+                        automatic ledger updates.
+                      </p>
+                      <Link
+                        to="/dashboard/transactions"
+                        onClick={() => setNotifOpen(false)}
+                        className="inline-block font-medium text-indigo-600 hover:text-indigo-700"
+                      >
+                        Inspect all transactions →
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Profile Menu */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileMenuOpen((v) => !v);
+                    setNotifOpen(false);
+                  }}
+                  className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  <OrganizerAvatar
+                    name={organizer.fullName}
+                    avatarUrl={organizer.avatarUrl}
+                    size="xs"
+                  />
+                  <span className="hidden md:inline text-xs font-medium text-slate-700 max-w-[110px] truncate">
+                    {organizer.fullName}
+                  </span>
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                </button>
+
+                {profileMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-40">
+                    <div className="px-3.5 py-2.5 border-b border-slate-100 flex items-center gap-2.5">
+                      <OrganizerAvatar
+                        name={organizer.fullName}
+                        avatarUrl={organizer.avatarUrl}
+                        size="sm"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-900 truncate">
+                          {organizer.fullName}
+                        </p>
+                        <p className="text-xs text-slate-500 truncate">{organizer.email}</p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/dashboard/profile"
+                      onClick={() => setProfileMenuOpen(false)}
+                      className="block px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                    >
+                      Account & Settlement Bank
+                    </Link>
+                    <Link
+                      to={`/u/${organizer.handle}`}
+                      onClick={() => setProfileMenuOpen(false)}
+                      className="block px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                    >
+                      Public Organizer Hub
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full text-left px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 cursor-pointer"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Viewport */}
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-7xl w-full mx-auto">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+};
