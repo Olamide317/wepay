@@ -30,6 +30,81 @@ interface SandboxStore {
   registeredEmail?: string;
 }
 
+// Normalizes backend { user } or { organizer } objects into Joshua's Organizer interface
+function normalizeOrganizer(raw: any): Organizer {
+  const email = String(raw?.email || '');
+  const fullName = String(raw?.fullName || raw?.name || email.split('@')[0] || 'Organizer');
+  const handle = slugify(raw?.handle || fullName || email.split('@')[0] || 'organizer');
+
+  return {
+    _id: String(raw?._id || raw?.id || ''),
+    fullName,
+    email,
+    phone: String(raw?.phone || ''),
+    handle,
+    avatarUrl: raw?.avatarUrl,
+    avatarStorage: raw?.avatarStorage || (raw?.avatarUrl ? 'remote' : 'none'),
+    avatarUpdatedAt: raw?.avatarUpdatedAt,
+    settlementBank: raw?.settlementBank,
+    verified: Boolean(raw?.verified),
+    createdAt: raw?.createdAt || new Date().toISOString(),
+  };
+}
+
+// Normalizes backend collection documents into Joshua's Collection interface
+function normalizeCollection(raw: any): Collection {
+  const inferredType =
+    raw?.type ||
+    (raw?.mode === 'SPLIT' ? 'POOL' : raw?.mode === 'FIXED' ? 'INVENTORY' : 'OPEN');
+
+  const inferredPricingRule =
+    raw?.pricingRule || (raw?.mode === 'OPEN' ? 'OPEN' : 'FIXED');
+
+  return {
+    _id: String(raw?._id || raw?.id || ''),
+    organizerId:
+      typeof raw?.organizerId === 'string'
+        ? raw.organizerId
+        : String(raw?.organizer?._id || raw?.organizer || ''),
+    organizerName: String(raw?.organizerName || raw?.organizer?.fullName || 'Organizer'),
+    organizerHandle: String(
+      raw?.organizerHandle ||
+        raw?.organizer?.handle ||
+        slugify(raw?.organizer?.fullName || 'organizer')
+    ),
+    organizerVerified: Boolean(raw?.organizerVerified ?? raw?.organizer?.verified),
+    slug: String(raw?.slug || ''),
+    type: inferredType,
+    title: String(raw?.title || ''),
+    description: String(raw?.description || ''),
+    currency: 'NGN',
+    pricingRule: inferredPricingRule,
+    amount: Number(raw?.amount ?? raw?.perPersonAmount ?? raw?.totalTarget ?? 0),
+    targetAmount:
+      raw?.targetAmount !== undefined
+        ? Number(raw.targetAmount)
+        : raw?.totalTarget !== undefined
+        ? Number(raw.totalTarget)
+        : undefined,
+    amountRaised: Number(raw?.amountRaised ?? raw?.collectedAmount ?? 0),
+    stockLimit:
+      raw?.stockLimit !== undefined
+        ? Number(raw.stockLimit)
+        : raw?.expectedPayers !== undefined
+        ? Number(raw.expectedPayers)
+        : undefined,
+    stockSold: Number(raw?.stockSold ?? raw?.paidCount ?? 0),
+    maxQuantityPerOrder:
+      raw?.maxQuantityPerOrder !== undefined ? Number(raw.maxQuantityPerOrder) : 5,
+    passFeeToPayer: raw?.passFeeToPayer !== undefined ? Boolean(raw.passFeeToPayer) : true,
+    customFields: Array.isArray(raw?.customFields) ? raw.customFields : [],
+    status: String(raw?.status || 'ACTIVE').toUpperCase() as CollectionStatus,
+    expiresAt: raw?.expiresAt,
+    createdAt: raw?.createdAt || new Date().toISOString(),
+    contributorCount: Number(raw?.contributorCount ?? raw?.paidCount ?? 0),
+  };
+}
+
 function sanitizeOrganizerForStorage(org: Organizer): Organizer {
   if (org.avatarStorage === 'local_indexeddb') {
     const { avatarUrl: _omitBlobUrl, ...rest } = org;
@@ -158,12 +233,16 @@ export const wepayService = {
     isMock: boolean;
   }> {
     if (isBackendConfigured()) {
-      const res = await apiRequest<{ token: string; organizer: Organizer }>('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email: payload.email, password: payload.password }),
-      });
+      const res = await apiRequest<{ token: string; organizer?: unknown; user?: unknown }>(
+        '/api/auth/login',
+        {
+          method: 'POST',
+          body: JSON.stringify({ email: payload.email, password: payload.password }),
+        }
+      );
       setAuthToken(res.token, payload.remember ?? true);
-      return { organizer: res.organizer, token: res.token, isMock: false };
+      const organizer = normalizeOrganizer(res.organizer || res.user);
+      return { organizer, token: res.token, isMock: false };
     }
 
     await delay(450);
@@ -219,12 +298,16 @@ export const wepayService = {
     password: string;
   }): Promise<{ organizer: Organizer; token: string; isMock: boolean }> {
     if (isBackendConfigured()) {
-      const res = await apiRequest<{ token: string; organizer: Organizer }>('/api/auth/register', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
+      const res = await apiRequest<{ token: string; organizer?: unknown; user?: unknown }>(
+        '/api/auth/register',
+        {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        }
+      );
       setAuthToken(res.token, true);
-      return { organizer: res.organizer, token: res.token, isMock: false };
+      const organizer = normalizeOrganizer(res.organizer || res.user);
+      return { organizer, token: res.token, isMock: false };
     }
 
     await delay(550);
@@ -252,7 +335,7 @@ export const wepayService = {
 
   async updateSettlementBank(bank: SettlementBank): Promise<{ organizer: Organizer; isMock: boolean }> {
     if (isBackendConfigured()) {
-      const res = await apiRequest<{ organizer: Organizer }>(
+      const res = await apiRequest<{ organizer?: unknown; user?: unknown }>(
         '/api/profile/bank',
         {
           method: 'POST',
@@ -260,7 +343,7 @@ export const wepayService = {
         },
         true
       );
-      return { organizer: res.organizer, isMock: false };
+      return { organizer: normalizeOrganizer(res.organizer || res.user), isMock: false };
     }
 
     await delay(400);
@@ -340,6 +423,15 @@ export const wepayService = {
   },
 
   async getCurrentOrganizer(): Promise<Organizer> {
+    if (isBackendConfigured()) {
+      const res = await apiRequest<{ organizer?: unknown; user?: unknown }>(
+        '/api/auth/me',
+        {},
+        true
+      );
+      return normalizeOrganizer(res.organizer || res.user);
+    }
+
     const store = loadSandboxStore();
     return profilePictureService.resolveOrganizerAvatar(store.organizer);
   },
@@ -349,8 +441,11 @@ export const wepayService = {
   // ---------------------------------------------------------------------------
   async getCollections(): Promise<{ collections: Collection[]; isMock: boolean }> {
     if (isBackendConfigured()) {
-      const res = await apiRequest<{ collections: Collection[] }>('/api/collections', {}, true);
-      return { collections: res.collections, isMock: false };
+      const res = await apiRequest<{ collections: unknown[] }>('/api/collections', {}, true);
+      const normalized = Array.isArray(res.collections)
+        ? res.collections.map(normalizeCollection)
+        : [];
+      return { collections: normalized, isMock: false };
     }
 
     await delay(280);
@@ -380,15 +475,31 @@ export const wepayService = {
     input: CreateCollectionInput
   ): Promise<{ collection: Collection; isMock: boolean }> {
     if (isBackendConfigured()) {
-      const res = await apiRequest<{ collection: Collection }>(
+      // Send both Joshua's field names and your Express schema aliases
+      const mode =
+        input.type === 'POOL' ? 'SPLIT' : input.type === 'INVENTORY' ? 'FIXED' : 'OPEN';
+      const totalTarget =
+        input.type === 'POOL'
+          ? input.targetAmount
+          : input.type === 'INVENTORY'
+          ? input.amount * (input.stockLimit || 1)
+          : input.amount;
+
+      const res = await apiRequest<{ collection: unknown }>(
         '/api/collections',
         {
           method: 'POST',
-          body: JSON.stringify(input),
+          body: JSON.stringify({
+            ...input,
+            mode,
+            totalTarget,
+            perPersonAmount: input.amount,
+            expectedPayers: input.type === 'INVENTORY' ? input.stockLimit : undefined,
+          }),
         },
         true
       );
-      return { collection: res.collection, isMock: false };
+      return { collection: normalizeCollection(res.collection), isMock: false };
     }
 
     await delay(500);
@@ -433,7 +544,7 @@ export const wepayService = {
     status: CollectionStatus
   ): Promise<{ collection: Collection; isMock: boolean }> {
     if (isBackendConfigured()) {
-      const res = await apiRequest<{ collection: Collection }>(
+      const res = await apiRequest<{ collection: unknown }>(
         `/api/collections/${id}/status`,
         {
           method: 'PATCH',
@@ -441,7 +552,7 @@ export const wepayService = {
         },
         true
       );
-      return { collection: res.collection, isMock: false };
+      return { collection: normalizeCollection(res.collection), isMock: false };
     }
 
     await delay(300);
@@ -457,12 +568,16 @@ export const wepayService = {
     id: string
   ): Promise<{ collection: Collection; transactions: Transaction[]; isMock: boolean }> {
     if (isBackendConfigured()) {
-      const res = await apiRequest<{ collection: Collection; transactions: Transaction[] }>(
+      const res = await apiRequest<{ collection: unknown; transactions: Transaction[] }>(
         `/api/collections/${id}/ledger`,
         {},
         true
       );
-      return { ...res, isMock: false };
+      return {
+        collection: normalizeCollection(res.collection),
+        transactions: Array.isArray(res.transactions) ? res.transactions : [],
+        isMock: false,
+      };
     }
 
     await delay(320);
@@ -500,8 +615,8 @@ export const wepayService = {
   // ---------------------------------------------------------------------------
   async getPublicCollection(slug: string): Promise<{ collection: Collection; isMock: boolean }> {
     if (isBackendConfigured()) {
-      const res = await apiRequest<{ collection: Collection }>(`/api/public/c/${slug}`);
-      return { collection: res.collection, isMock: false };
+      const res = await apiRequest<{ collection: unknown }>(`/api/public/c/${slug}`);
+      return { collection: normalizeCollection(res.collection), isMock: false };
     }
 
     await delay(300);
@@ -517,10 +632,16 @@ export const wepayService = {
     handle: string
   ): Promise<{ organizer: Organizer; collections: Collection[]; isMock: boolean }> {
     if (isBackendConfigured()) {
-      const res = await apiRequest<{ organizer: Organizer; collections: Collection[] }>(
+      const res = await apiRequest<{ organizer: unknown; collections: unknown[] }>(
         `/api/public/u/${handle}`
       );
-      return { ...res, isMock: false };
+      return {
+        organizer: normalizeOrganizer(res.organizer),
+        collections: Array.isArray(res.collections)
+          ? res.collections.map(normalizeCollection)
+          : [],
+        isMock: false,
+      };
     }
 
     await delay(300);
@@ -589,7 +710,6 @@ export const wepayService = {
       }
     }
 
-    // Prototype sandbox fee placeholder (actual fee must come from backend rules in production)
     const sandboxFee = col.passFeeToPayer ? Math.min(Math.round(baseAmount * 0.015) + 50, 2000) : 0;
     const totalPaid = baseAmount + sandboxFee;
 
@@ -624,7 +744,7 @@ export const wepayService = {
 
     const checkoutParams: InterswitchCheckoutParams = {
       txnRef,
-      amount: totalPaid * 100, // kobo
+      amount: totalPaid * 100,
       amountNaira: totalPaid,
       baseAmountNaira: baseAmount,
       feeAmountNaira: sandboxFee,
@@ -638,11 +758,6 @@ export const wepayService = {
     return { checkoutParams, transaction: pendingTx, isMock: true };
   },
 
-  /**
-   * Simulates the backend webhook + Interswitch requery verification cycle in Sandbox Mode.
-   * In production, the backend updates transaction status via webhook + requery, and the
-   * frontend polls GET /api/payments/receipt/:receiptCode to verify.
-   */
   async simulateSandboxVerification(
     receiptCode: string,
     outcome: 'SUCCESS' | 'FAILED' | 'PENDING'
