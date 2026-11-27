@@ -5,45 +5,17 @@ const Transaction = require('../models/Transaction');
 const { sendPaymentReceiptEmail } = require('../services/emailService');
 
 const getIswConfig = () => {
-  const configuredMode = String(process.env.ISW_MODE || 'TEST').trim().toUpperCase();
-  const qaMode = configuredMode === 'QA';
-  const mode = qaMode ? 'TEST' : configuredMode;
-  if (mode !== 'TEST' && mode !== 'LIVE') {
-    const error = new Error('ISW_MODE must be set to TEST, QA, or LIVE.');
-    error.status = 500;
-    throw error;
-  }
-
-  const configuredMerchantCode =
-    process.env.ISW_MERCHANT_CODE || process.env.INTERSWITCH_MERCHANT_CODE;
-  const merchantCode = configuredMerchantCode || 'MX6072';
-  const configuredPayItemId =
-    process.env.ISW_PAY_ITEM_ID || process.env.INTERSWITCH_PAY_ITEM_ID;
-  if (
-    mode === 'LIVE' &&
-    (!configuredMerchantCode ||
-      !configuredPayItemId ||
-      merchantCode === 'MX6072' ||
-      configuredPayItemId === '9405967')
-  ) {
-    const error = new Error(
-      'Live IPG requires your production ISW_MERCHANT_CODE and ISW_PAY_ITEM_ID from Interswitch.'
-    );
-    error.status = 503;
-    throw error;
-  }
+  const isLive = (process.env.ISW_MODE || 'LIVE').toUpperCase() === 'LIVE';
+  const merchantCode = process.env.ISW_MERCHANT_CODE || 'MX153376';
+  const payItemId = process.env.ISW_PAY_ITEM_ID || '9616745';
 
   return {
-    mode,
+    mode: isLive ? 'LIVE' : 'TEST',
     merchantCode,
-    payItemId: configuredPayItemId || '9405967',
-    requeryBaseUrl:
-      qaMode || merchantCode === 'MX6072'
-        ? 'https://qa.interswitchng.com/collections/api/v1/gettransaction.json'
-        : process.env.ISW_REQUERY_URL ||
-          (mode === 'LIVE'
-            ? 'https://webpay.interswitchng.com/collections/api/v1/gettransaction'
-            : 'https://sandbox.interswitchng.com/collections/api/v1/gettransaction'),
+    payItemId,
+    requeryBaseUrl: isLive
+      ? 'https://webpay.interswitchng.com/collections/api/v1/gettransaction.json'
+      : 'https://qa.interswitchng.com/collections/api/v1/gettransaction.json',
   };
 };
 
@@ -291,8 +263,8 @@ exports.initializePayment = async (req, res) => {
         ? requestedAmount
         : unitOrBase;
 
-    if (!baseAmount || baseAmount < 100) {
-      return res.status(400).json({ message: 'Payment amount must be at least â‚¦100' });
+    if (!baseAmount || baseAmount < 10) {
+      return res.status(400).json({ message: 'Payment amount must be at least ₦10' });
     }
 
     const passFeeToPayer =

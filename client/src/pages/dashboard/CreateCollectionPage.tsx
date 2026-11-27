@@ -122,15 +122,15 @@ export const CreateCollectionPage: React.FC = () => {
 
     const numAmount = Number(amount);
     if (pricingRule !== 'FLEXIBLE') {
-      if (!amount || Number.isNaN(numAmount) || numAmount < 100) {
-        next.amount = 'Enter a valid Naira amount (minimum ₦100).';
+      if (!amount || Number.isNaN(numAmount) || numAmount < 10) {
+        next.amount = 'Enter a valid Naira amount (minimum ₦10).';
       }
     }
 
     if (type === 'POOL') {
       const numTarget = Number(targetAmount);
-      if (!targetAmount || Number.isNaN(numTarget) || numTarget < 500) {
-        next.targetAmount = 'Target amount must be at least ₦500.';
+      if (!targetAmount || Number.isNaN(numTarget) || numTarget < 10) {
+        next.targetAmount = 'Target amount must be at least ₦10.';
       } else if (pricingRule === 'FIXED' && numAmount > numTarget) {
         next.amount = 'Contribution amount cannot exceed the pool target.';
       }
@@ -508,7 +508,7 @@ export const CreateCollectionPage: React.FC = () => {
                         : 'Contribution Amount (NGN)'
                     }
                     type="number"
-                    min={100}
+                    min={10}
                     required
                     leftAddon="₦"
                     placeholder={type === 'INVENTORY' ? '2500' : '15000'}
@@ -522,7 +522,7 @@ export const CreateCollectionPage: React.FC = () => {
                   <Input
                     label="Pool Target Amount (NGN)"
                     type="number"
-                    min={500}
+                    min={10}
                     required
                     leftAddon="₦"
                     placeholder="75000"

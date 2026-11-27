@@ -237,7 +237,7 @@ export const PublicCollectionPage: React.FC = () => {
     if (collection.type !== 'INVENTORY' && collection.pricingRule !== 'FIXED') {
       const val = Number(customAmount);
       const minRequired =
-        collection.pricingRule === 'MINIMUM' ? collection.amount : 100;
+        collection.pricingRule === 'MINIMUM' ? Math.max(10, collection.amount) : 10;
       if (!customAmount || Number.isNaN(val) || val < minRequired) {
         next.amount = `Minimum contribution is ${formatNaira(minRequired)}.`;
       } else if (collection.type === 'POOL' && val > remainingPool) {
@@ -627,7 +627,11 @@ export const PublicCollectionPage: React.FC = () => {
                         : 'Contribution Amount (NGN)'
                     }
                     type="number"
-                    min={collection.pricingRule === 'MINIMUM' ? collection.amount : 100}
+                    min={
+                      collection.pricingRule === 'MINIMUM'
+                        ? Math.max(10, collection.amount)
+                        : 10
+                    }
                     max={collection.type === 'POOL' ? remainingPool : undefined}
                     required
                     leftAddon="₦"

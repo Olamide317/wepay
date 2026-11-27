@@ -48,12 +48,12 @@ const transactionSchema = new mongoose.Schema(
     baseAmount: {
       type: Number,
       required: true,
-      min: 100,
+      min: 10,
     },
     amount: {
       type: Number,
       required: true,
-      min: 100,
+      min: 10,
     },
     feeAmount: {
       type: Number,
@@ -63,7 +63,7 @@ const transactionSchema = new mongoose.Schema(
     totalPaid: {
       type: Number,
       required: true,
-      min: 100,
+      min: 10,
     },
     customResponses: {
       type: mongoose.Schema.Types.Mixed,
