@@ -74,6 +74,7 @@ const formatTransactionResponse = (tx, collection) => ({
 const settleTransactionSuccess = async (tx, interswitchRef) => {
   const session = await mongoose.startSession();
   let settledTransaction = tx;
+  let transactionFailed = false;
 
   try {
     await session.withTransaction(async () => {
@@ -179,8 +180,25 @@ const settleTransactionSuccess = async (tx, interswitchRef) => {
     });
 
     return settledTransaction;
+  } catch (error) {
+    transactionFailed = true;
+    try {
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
+    } catch (abortError) {
+      console.error('Failed to abort payment settlement transaction:', abortError);
+    }
+    throw error;
   } finally {
-    await session.endSession();
+    try {
+      await session.endSession();
+    } catch (endError) {
+      if (!transactionFailed) {
+        throw endError;
+      }
+      console.error('Failed to end payment settlement session after transaction failure:', endError);
+    }
   }
 };
 

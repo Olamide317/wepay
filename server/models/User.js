@@ -1,26 +1,26 @@
-﻿const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+﻿const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
 const settlementBankSchema = new mongoose.Schema(
   {
-    bankCode: { type: String, trim: true, default: '' },
+    bankCode: { type: String, trim: true, default: "" },
     bankName: { type: String, required: true, trim: true },
     accountNumber: { type: String, required: true, trim: true },
-    accountName: { type: String, trim: true, default: '' },
+    accountName: { type: String, trim: true, default: "" },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const userSchema = new mongoose.Schema(
   {
     fullName: {
       type: String,
-      required: [true, 'Full name is required'],
+      required: [true, "Full name is required"],
       trim: true,
     },
     email: {
       type: String,
-      required: [true, 'Email is required'],
+      required: [true, "Email is required"],
       unique: true,
       lowercase: true,
       trim: true,
@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       trim: true,
-      default: '',
+      default: "",
     },
     handle: {
       type: String,
@@ -41,7 +41,7 @@ const userSchema = new mongoose.Schema(
     avatarUrl: {
       type: String,
       trim: true,
-      default: '',
+      default: "",
     },
     settlementBank: {
       type: settlementBankSchema,
@@ -56,11 +56,11 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 userSchema.methods.comparePassword = async function (plainPassword) {
   return bcrypt.compare(plainPassword, this.passwordHash);
 };
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model("User", userSchema);
