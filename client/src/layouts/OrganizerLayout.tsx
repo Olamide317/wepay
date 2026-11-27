@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { OrganizerAvatar } from '../components/OrganizerAvatar';
+import { BackButton } from '../components/BackButton';
 import { WePayLogo } from '../components/WePayLogo';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
@@ -250,6 +251,7 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
         <header className="sticky top-0 z-20 bg-white/90 border-b border-slate-200/80 backdrop-blur-xl">
           <div className="px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
+              {location.pathname !== '/' && <BackButton compact className="shrink-0" />}
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(true)}

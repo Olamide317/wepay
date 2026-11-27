@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { WePayLogo } from '../components/WePayLogo';
+import { BackButton } from '../components/BackButton';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Checkbox, Input } from '../components/ui/FormControls';
@@ -101,6 +102,7 @@ export const RegisterPage: React.FC = () => {
       }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,255,255,0.72),transparent_38%)] pointer-events-none" aria-hidden="true" />
+      <BackButton className="absolute left-4 top-4 z-10 sm:left-6 sm:top-6" />
       <div className="relative w-full max-w-lg mx-auto space-y-6">
         <div className="flex flex-col items-center text-center space-y-2">
           <Link to="/" aria-label="Return to WePay Home">
