@@ -1,6 +1,14 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const isFounderEmail = (email) => {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!normalizedEmail) return false;
+  return String(process.env.FOUNDER_EMAILS || '')
+    .split(',')
+    .some((founderEmail) => founderEmail.trim().toLowerCase() === normalizedEmail);
+};
+
 const protect = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -23,4 +31,11 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = { protect };
+const requireFounder = (req, res, next) => {
+  if (!req.user || !isFounderEmail(req.user.email)) {
+    return res.status(403).json({ message: 'Founder access required.' });
+  }
+  return next();
+};
+
+module.exports = { protect, requireFounder, isFounderEmail };
