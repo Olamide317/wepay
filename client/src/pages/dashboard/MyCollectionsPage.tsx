@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ExternalLink, FolderPlus, Plus, Search, Share2 } from 'lucide-react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
+import { FolderPlus, Plus, Search, Settings2, Share2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShareCollectionModal } from '../../components/ShareCollectionModal';
 import { Button } from '../../components/ui/Button';
@@ -53,7 +53,7 @@ export const MyCollectionsPage: React.FC = () => {
         <div>
           <h1 className="font-display text-2xl font-bold text-slate-900">My Collections</h1>
           <p className="text-sm text-slate-600 mt-0.5">
-            All bill splits, open dues, and merchant pre-order links.
+            All bill splits, open dues, and merchant pre-order links. Click any card to open its payment page.
           </p>
         </div>
         <Link to="/dashboard/create">
@@ -134,7 +134,19 @@ export const MyCollectionsPage: React.FC = () => {
                 : null;
 
             return (
-              <Card key={col._id} className="flex flex-col justify-between space-y-5">
+              <div
+                key={col._id}
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/c/${col.slug}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/c/${col.slug}`);
+                  }
+                }}
+                className="text-left rounded-xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between space-y-5 cursor-pointer transition-all hover:border-indigo-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-600/30"
+              >
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-xs font-medium text-slate-500">
@@ -144,12 +156,9 @@ export const MyCollectionsPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <Link
-                      to={`/dashboard/collections/${col._id}`}
-                      className="text-base font-semibold text-slate-900 hover:text-indigo-600 transition-colors"
-                    >
+                    <h3 className="text-base font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
                       {col.title}
-                    </Link>
+                    </h3>
                     <p className="text-xs text-slate-500 mt-1 line-clamp-2">{col.description}</p>
                   </div>
 
@@ -192,7 +201,10 @@ export const MyCollectionsPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                <div
+                  className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <span className="text-xs text-slate-400">{formatDate(col.createdAt)}</span>
                   <div className="flex items-center gap-1.5">
                     <Button
@@ -209,15 +221,16 @@ export const MyCollectionsPage: React.FC = () => {
                       </Button>
                     </Link>
                     <Link
-                      to={`/c/${col.slug}`}
-                      aria-label={`Open public page for ${col.title}`}
+                      to={`/dashboard/collections/${col._id}`}
+                      aria-label={`Manage ${col.title}`}
+                      title="Manage collection settings"
                       className="h-9 w-9 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50"
                     >
-                      <ExternalLink className="h-3.5 w-3.5" />
+                      <Settings2 className="h-3.5 w-3.5" />
                     </Link>
                   </div>
                 </div>
-              </Card>
+              </div>
             );
           })}
         </div>

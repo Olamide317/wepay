@@ -87,10 +87,7 @@ exports.getMyCollections = async (req, res) => {
 
 exports.getCollectionBySlug = async (req, res) => {
   try {
-    const collection = await Collection.findOne({ slug: req.params.slug }).populate(
-      'organizer',
-      'fullName'
-    );
+    const collection = await Collection.findOne({ slug: req.params.slug }).populate('organizer', 'fullName handle verified');
 
     if (!collection) {
       return res.status(404).json({ message: 'Collection not found' });
