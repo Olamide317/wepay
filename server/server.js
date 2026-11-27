@@ -7,7 +7,10 @@ const { getCollectionBySlug } = require('./controllers/collectionController');
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_URL || '*' }));
+const allowedOrigins = process.env.CLIENT_URL
+  ? process.env.CLIENT_URL.split(',').map((u) => u.trim().replace(/\/+$/, '')).filter(Boolean)
+  : '*';
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 app.use('/api/auth', require('./routes/authRoutes'));
