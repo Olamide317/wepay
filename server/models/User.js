@@ -1,5 +1,15 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+
+const settlementBankSchema = new mongoose.Schema(
+  {
+    bankCode: { type: String, trim: true, default: '' },
+    bankName: { type: String, required: true, trim: true },
+    accountNumber: { type: String, required: true, trim: true },
+    accountName: { type: String, trim: true, default: '' },
+  },
+  { _id: false }
+);
 
 const userSchema = new mongoose.Schema(
   {
@@ -19,6 +29,27 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: '',
+    },
+    handle: {
+      type: String,
+      unique: true,
+      sparse: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+    },
+    avatarUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    settlementBank: {
+      type: settlementBankSchema,
+      default: null,
+    },
+    verified: {
+      type: Boolean,
+      default: false,
     },
     passwordHash: {
       type: String,
