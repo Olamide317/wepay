@@ -4,6 +4,7 @@ import {
   Camera,
   Download,
   ExternalLink,
+  Pencil,
   RotateCcw,
   Trash2,
 } from 'lucide-react';
@@ -39,6 +40,13 @@ export const ProfilePage: React.FC = () => {
   const [avatarSuccess, setAvatarSuccess] = useState<string | null>(null);
   const [removingAvatar, setRemovingAvatar] = useState(false);
 
+  // Organizer display name edit state
+  const [editingName, setEditingName] = useState(false);
+  const [fullNameDraft, setFullNameDraft] = useState(organizer?.fullName || '');
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [nameSuccess, setNameSuccess] = useState<string | null>(null);
+
   useEffect(() => {
     setBankCode(organizer?.settlementBank?.bankCode || '');
     setAccountNumber(organizer?.settlementBank?.accountNumber || '');
@@ -51,6 +59,12 @@ export const ProfilePage: React.FC = () => {
     organizer?.settlementBank?.accountNumber,
     organizer?.settlementBank?.accountName,
   ]);
+
+  useEffect(() => {
+    setFullNameDraft(organizer?.fullName || '');
+    setEditingName(false);
+    setNameError(null);
+  }, [organizer?._id, organizer?.fullName]);
 
   if (!organizer) return null;
 
@@ -105,6 +119,43 @@ export const ProfilePage: React.FC = () => {
       );
     } finally {
       setRemovingAvatar(false);
+    }
+  };
+
+  const handleOpenEditName = () => {
+    setFullNameDraft(organizer.fullName);
+    setNameError(null);
+    setNameSuccess(null);
+    setEditingName(true);
+  };
+
+  const handleCancelEditName = () => {
+    setFullNameDraft(organizer.fullName);
+    setNameError(null);
+    setEditingName(false);
+  };
+
+  const handleSaveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = fullNameDraft.trim();
+    setNameError(null);
+    setNameSuccess(null);
+
+    if (trimmed.length < 2) {
+      setNameError('Full name must be at least 2 characters.');
+      return;
+    }
+
+    setSavingName(true);
+    try {
+      const res = await wepayService.updateOrganizerName(trimmed);
+      setOrganizerState(res.organizer);
+      setEditingName(false);
+      setNameSuccess('Your display name has been updated.');
+    } catch (err) {
+      setNameError(err instanceof Error ? err.message : 'Unable to update name.');
+    } finally {
+      setSavingName(false);
     }
   };
 
@@ -172,10 +223,22 @@ export const ProfilePage: React.FC = () => {
                 avatarUrl={organizer.avatarUrl}
                 size="xl"
               />
-              <div className="min-w-0 space-y-0.5">
-                <h2 className="text-base font-semibold text-slate-900 truncate">
-                  {organizer.fullName}
-                </h2>
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-base font-semibold text-slate-900 truncate">
+                    {organizer.fullName}
+                  </h2>
+                  {!editingName && (
+                    <button
+                      type="button"
+                      onClick={handleOpenEditName}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 shrink-0 cursor-pointer"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      <span>Edit Name</span>
+                    </button>
+                  )}
+                </div>
                 <p className="text-xs text-slate-500 font-mono-num truncate">
                   @{organizer.handle}
                 </p>
@@ -188,6 +251,41 @@ export const ProfilePage: React.FC = () => {
                 </p>
               </div>
             </div>
+
+            {nameSuccess && <AlertBanner variant="success" message={nameSuccess} />}
+            {editingName && (
+              <form
+                onSubmit={handleSaveName}
+                noValidate
+                className="p-3.5 rounded-xl border border-indigo-200 bg-slate-50 space-y-3"
+              >
+                <Input
+                  label="Full Name"
+                  required
+                  value={fullNameDraft}
+                  onChange={(e) => {
+                    setFullNameDraft(e.target.value);
+                    setNameError(null);
+                  }}
+                  placeholder="Enter your full name"
+                  error={nameError || undefined}
+                />
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCancelEditName}
+                    disabled={savingName}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" size="sm" loading={savingName}>
+                    {savingName ? 'Saving...' : 'Save Name'}
+                  </Button>
+                </div>
+              </form>
+            )}
 
             {avatarError && <AlertBanner variant="error" message={avatarError} />}
             {avatarSuccess && <AlertBanner variant="success" message={avatarSuccess} />}
@@ -231,6 +329,21 @@ export const ProfilePage: React.FC = () => {
 
           <dl className="space-y-2.5 pt-3 border-t border-slate-100 text-sm">
             <div>
+              <dt className="text-xs text-slate-500">Full Name</dt>
+              <dd className="font-medium text-slate-900 flex items-center justify-between gap-2">
+                <span className="truncate">{organizer.fullName}</span>
+                {!editingName && (
+                  <button
+                    type="button"
+                    onClick={handleOpenEditName}
+                    className="text-xs font-medium text-indigo-600 hover:text-indigo-700 shrink-0 cursor-pointer"
+                  >
+                    Change
+                  </button>
+                )}
+              </dd>
+            </div>
+            <div>
               <dt className="text-xs text-slate-500">Email</dt>
               <dd className="font-medium text-slate-900">{organizer.email}</dd>
             </div>
@@ -254,7 +367,7 @@ export const ProfilePage: React.FC = () => {
               <Building2 className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-slate-900">Settlement Bank Account</h2>
+              <h2 className="text-base font-semibold text-slate-900">Bank Account Details</h2>
               <p className="text-xs text-slate-500">
                 {organizer.settlementBank
                   ? `Active payout account: ${organizer.settlementBank.bankName} · ${organizer.settlementBank.accountNumber}`
@@ -305,7 +418,7 @@ export const ProfilePage: React.FC = () => {
             />
 
             <Button type="submit" loading={saving}>
-              {saving ? 'Saving...' : 'Save Settlement Bank'}
+              {saving ? 'Saving...' : 'Save Bank Details'}
             </Button>
           </form>
         </Card>

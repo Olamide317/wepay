@@ -274,6 +274,32 @@ export const wepayService = {
     return { organizer: hydrated, isMock: true };
   },
 
+  async updateOrganizerName(fullName: string): Promise<{ organizer: Organizer; isMock: boolean }> {
+    const trimmed = fullName.trim();
+    if (trimmed.length < 2) {
+      throw new Error('Full name must be at least 2 characters.');
+    }
+
+    if (isBackendConfigured()) {
+      throw new Error(
+        'Server-side profile name update endpoint is not yet enabled on the configured backend.'
+      );
+    }
+
+    await delay(300);
+    const store = loadSandboxStore();
+    store.organizer = {
+      ...store.organizer,
+      fullName: trimmed,
+    };
+    store.collections = store.collections.map((col) =>
+      col.organizerId === store.organizer._id ? { ...col, organizerName: trimmed } : col
+    );
+    saveSandboxStore(store);
+    const hydrated = await profilePictureService.resolveOrganizerAvatar(store.organizer);
+    return { organizer: hydrated, isMock: true };
+  },
+
   async updateProfilePicture(
     imageBlob: Blob,
     fileName: string

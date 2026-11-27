@@ -214,7 +214,7 @@ export const ContributorFieldsBuilder: React.FC<ContributorFieldsBuilderProps> =
             </h2>
             <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
               Full name, email, and phone number are always collected for Interswitch receipts. Add
-              any custom fields, e.g(matric no, Address) below to collect extra contributor or
+              any custom fields, e.g (Matric no, Address) below to collect extra contributor or
               fulfillment details
             </p>
           </div>
