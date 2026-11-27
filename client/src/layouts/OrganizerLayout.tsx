@@ -13,7 +13,7 @@ import {
   X,
   ExternalLink,
 } from 'lucide-react';
-import { Link, NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { OrganizerAvatar } from '../components/OrganizerAvatar';
 import { WePayLogo } from '../components/WePayLogo';
 import { Button } from '../components/ui/Button';
@@ -37,9 +37,11 @@ interface OrganizerLayoutProps {
 export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = true }) => {
   const { organizer, isAuthenticated, isNewUser, isLoading, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   if (requireAuth && isLoading) {
     return (
@@ -68,11 +70,24 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white/95 border-r border-slate-200/80 z-30 backdrop-blur-xl">
-        <div className="h-[72px] px-5 flex items-center border-b border-slate-200/80">
+      <aside
+        className={`hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 bg-white/95 border-r border-slate-200/80 z-30 backdrop-blur-xl transition-[width] duration-200 ${
+          desktopSidebarOpen ? 'lg:w-64' : 'lg:w-0 overflow-hidden'
+        }`}
+      >
+        <div className="h-[72px] px-5 flex items-center justify-between border-b border-slate-200/80 whitespace-nowrap">
           <Link to="/" aria-label="WePay Overview Home">
             <WePayLogo />
           </Link>
+          <button
+            type="button"
+            onClick={() => setDesktopSidebarOpen(false)}
+            aria-label="Close sidebar"
+            title="Close sidebar"
+            className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto" aria-label="Organizer navigation">
@@ -226,7 +241,11 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
       )}
 
       {/* Main Content Shell */}
-      <div className="flex-1 lg:pl-64 flex flex-col min-w-0">
+      <div
+        className={`flex-1 flex flex-col min-w-0 transition-[padding] duration-200 ${
+          desktopSidebarOpen ? 'lg:pl-64' : 'lg:pl-0'
+        }`}
+      >
         {/* Top Header */}
         <header className="sticky top-0 z-20 bg-white/90 border-b border-slate-200/80 backdrop-blur-xl">
           <div className="px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between gap-4">
@@ -236,6 +255,17 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
                 onClick={() => setMobileMenuOpen(true)}
                 aria-label="Open navigation menu"
                 className="lg:hidden h-10 w-10 -ml-2 rounded-lg flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer shrink-0"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setDesktopSidebarOpen(true)}
+                aria-label="Open sidebar"
+                title="Open sidebar"
+                className={`hidden lg:flex h-10 w-10 rounded-lg items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer shrink-0 ${
+                  desktopSidebarOpen ? 'lg:hidden' : ''
+                }`}
               >
                 <Menu className="h-5 w-5" />
               </button>
@@ -391,7 +421,7 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-7xl w-full mx-auto">
           <Outlet />
         </main>
-        <Footer />
+        {location.pathname === '/' && <Footer />}
       </div>
     </div>
   );

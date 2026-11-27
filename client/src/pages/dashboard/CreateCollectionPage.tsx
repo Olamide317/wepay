@@ -436,7 +436,9 @@ export const CreateCollectionPage: React.FC = () => {
                   2. Collection Information
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Shown prominently to contributors on the public payment page.
+                  {type === 'INVENTORY'
+                    ? 'Shown prominently to customers on the public payment page.'
+                    : 'Shown prominently to contributors on the public payment page.'}
                 </p>
               </div>
 
@@ -459,7 +461,11 @@ export const CreateCollectionPage: React.FC = () => {
                 label="Description"
                 required
                 rows={3}
-                placeholder="Explain what contributors are paying for, pickup instructions, or settlement timeline..."
+                placeholder={
+                  type === 'INVENTORY'
+                    ? 'Explain what customers are paying for, pickup instructions, or fulfillment timeline...'
+                    : 'Explain what contributors are paying for, pickup instructions, or settlement timeline...'
+                }
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 error={errors.description}

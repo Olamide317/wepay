@@ -92,7 +92,7 @@ const BENEFITS = [
   {
     title: 'Verified Digital Receipts',
     description:
-      'Contributors receive payment confirmation and digital proof of successful transactions after backend verification.',
+      'Contributors receive payment confirmation and digital proof of successful transactions after WePay Verification.',
     Icon: Receipt,
   },
   {
@@ -241,8 +241,8 @@ export const ProductOverviewPage: React.FC = () => {
             One Platform. Different Ways to Collect.
           </h2>
           <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-            Pick the collection rule that matches your group—whether everyone contributes a defined
-            amount toward a goal or gives flexibly at their own pace.
+            Pick the collection mode that matches your group—whether everyone contributes a specific
+            amount towards a goal or gives flexibly at their own pace.
           </p>
         </div>
 
@@ -281,10 +281,9 @@ export const ProductOverviewPage: React.FC = () => {
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                 <p className="text-xs font-semibold text-slate-900">How it works</p>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  The organizer sets a target pool amount and configures the expected contribution
-                  (fixed or minimum per contributor). WePay tracks total raised, displays paid and
-                  pending transactions, and automatically completes the collection once the target is
-                  reached.
+                  The organizer sets a target amount and sets the expected contribution (fixed or
+                  minimum per contributor). WePay tracks total raised, displays paid and pending
+                  transactions, and automatically completes the collection once the target is reached.
                 </p>
               </div>
 
@@ -348,7 +347,6 @@ export const ProductOverviewPage: React.FC = () => {
 
               <ul className="space-y-2 text-sm text-slate-700 pt-1">
                 {[
-                  'Flexible any-amount, minimum, or fixed Naira rules',
                   'Custom contributor fields for optional notes or details',
                   'Real-time organizer ledger and CSV transaction export',
                   'Verified digital QR receipts for successful payments',

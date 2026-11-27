@@ -5,7 +5,6 @@ import { WePayLogo } from '../components/WePayLogo';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useAuth } from '../context/AuthContext';
-import { Footer } from '../components/Footer';
 
 export const LandingPage: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -193,7 +192,6 @@ export const LandingPage: React.FC = () => {
         </section>
       </main>
 
-      <Footer />
     </div>
   );
 };

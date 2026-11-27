@@ -2,7 +2,6 @@ import React from 'react';
 import { Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { WePayLogo } from '../components/WePayLogo';
-import { Footer } from '../components/Footer';
 
 interface PublicLayoutProps {
   children: React.ReactNode;
@@ -31,7 +30,6 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children, maxWidth =
         {children}
       </main>
 
-      <Footer />
     </div>
   );
 };
