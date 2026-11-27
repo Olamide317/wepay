@@ -34,7 +34,7 @@ interface InterswitchCheckoutModalProps {
 type PaymentMethod = 'CARD' | 'TRANSFER' | 'USSD';
 
 const ISW_SCRIPT_URLS: Record<InterswitchCheckoutParams['mode'], string> = {
-  TEST: 'https://newwebpay-sandbox.interswitchng.com/inline-checkout.js',
+  TEST: 'https://newwebpay.qa.interswitchng.com/inline-checkout.js',
   LIVE: 'https://newwebpay.interswitchng.com/inline-checkout.js',
 };
 
@@ -90,7 +90,11 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
   if (!params) return null;
 
   const isRemoteGateway = !params.isSandboxSimulation;
-  const isTestMode = params.mode === 'TEST';
+  const checkoutMode: InterswitchCheckoutParams['mode'] =
+    (params.mode || import.meta.env.VITE_ISW_MODE || 'LIVE').toUpperCase() === 'LIVE'
+      ? 'LIVE'
+      : 'TEST';
+  const isTestMode = checkoutMode === 'TEST';
 
   const handleCopyTestCard = async () => {
     try {
@@ -106,10 +110,10 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
     setGatewayError(null);
     setPhase('LOADING_SDK');
 
-    const sdkReady = await ensureInterswitchScript(params.mode);
+    const sdkReady = await ensureInterswitchScript(checkoutMode);
     if (!sdkReady || typeof window.webpayCheckout !== 'function') {
       setPhase('SELECT');
-      setGatewayError(`Could not load the Interswitch ${params.mode} checkout script. Check your network or try backend requery.`);
+      setGatewayError(`Could not load the Interswitch ${checkoutMode} checkout script. Check your network or try backend requery.`);
       return;
     }
 
@@ -117,14 +121,14 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
     const apiBaseUrl = getApiBaseUrl() || window.location.origin;
 
     const paymentRequest = {
-      merchant_code: params.merchantCode || 'MX6072',
-      pay_item_id: params.payItemId || '9405967',
+      merchant_code: params.merchantCode || import.meta.env.VITE_ISW_MERCHANT_CODE || 'MX153376',
+      pay_item_id: params.payItemId || import.meta.env.VITE_ISW_PAY_ITEM_ID || '9616745',
       txn_ref: params.txnRef,
       amount: String(params.amount),
       currency: 566,
       cust_email: contributorEmail || 'contributor@wepay.ng',
       site_redirect_url: new URL('/api/payments/redirect-return', apiBaseUrl).toString(),
-      mode: params.mode,
+      mode: checkoutMode,
       onComplete: async (response: Record<string, unknown>) => {
         const respCode = String(response?.resp || response?.ResponseCode || '');
         if (respCode === '00') {
@@ -173,7 +177,7 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
       title="Interswitch Web Checkout"
       description={
         isRemoteGateway
-          ? params.mode === 'LIVE'
+          ? checkoutMode === 'LIVE'
             ? 'Connected to Interswitch production IPG and verified via server-side requery.'
             : 'Connected to Interswitch sandbox IPG and verified via server-side requery.'
           : 'Local mock sandbox mode.'
@@ -187,7 +191,7 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
             <div className="flex items-center justify-between gap-2">
               <p className="font-semibold">
                 {isRemoteGateway
-                  ? `Interswitch ${params.mode} Gateway Ready`
+                  ? `Interswitch ${checkoutMode} Gateway Ready`
                   : 'Offline Sandbox Mode'}
               </p>
               {isRemoteGateway && isTestMode && (
