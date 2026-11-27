@@ -7,6 +7,7 @@ const getIswConfig = () => ({
   merchantCode: process.env.ISW_MERCHANT_CODE || process.env.INTERSWITCH_MERCHANT_CODE || 'MX6072',
   payItemId: process.env.ISW_PAY_ITEM_ID || process.env.INTERSWITCH_PAY_ITEM_ID || '9405967',
   requeryBaseUrl:
+    process.env.ISW_VERIFY_URL ||
     process.env.ISW_REQUERY_URL ||
     'https://qa.interswitchng.com/collections/api/v1/gettransaction.json',
 });
@@ -15,6 +16,27 @@ const isVerifiedInterswitchPayment = (response, expectedAmountKobo) =>
   response?.ResponseCode === '00' &&
   Number.isFinite(Number(response.Amount)) &&
   Number(response.Amount) === expectedAmountKobo;
+
+const REQUERY_TIMEOUT_MS = 15000;
+const digitsOnly = (v) => String(v || '').replace(/\D/g, '');
+
+// Match a pending roster member: exact name first, then email/phone stored in `contact`
+const findPendingPayer = (payers, tx) => {
+  const name = String(tx.contributorName || '').toLowerCase().trim();
+  const email = String(tx.contributorEmail || '').toLowerCase().trim();
+  const phone = digitsOnly(tx.contributorPhone);
+  const pending = payers.filter((p) => p.status === 'PENDING');
+
+  const byName = pending.find((p) => String(p.name || '').toLowerCase().trim() === name);
+  if (byName) return byName;
+
+  return pending.find((p) => {
+    const contact = String(p.contact || '').toLowerCase().trim();
+    if (!contact) return false;
+    if (email && contact === email) return true;
+    return phone.length >= 10 && digitsOnly(contact).endsWith(phone.slice(-10));
+  });
+};
 
 const formatTransactionResponse = (tx, collection) => ({
   _id: tx._id,
@@ -48,7 +70,8 @@ const settleTransactionSuccess = async (tx, interswitchRef) => {
   try {
     await session.withTransaction(async () => {
       const currentTx = await Transaction.findOne({ txnRef: tx.txnRef }).session(session);
-      if (!currentTx || currentTx.status === 'SUCCESS' || currentTx.status === 'FAILED') {
+      // Only SUCCESS is terminal. A FAILED tx may still be settled if Interswitch later confirms it.
+      if (!currentTx || currentTx.status === 'SUCCESS') {
         settledTransaction = currentTx || tx;
         return;
       }
@@ -133,10 +156,7 @@ const settleTransactionSuccess = async (tx, interswitchRef) => {
       await currentTx.save({ session });
 
       if (updatedCol && Array.isArray(updatedCol.expectedPayers) && updatedCol.expectedPayers.length > 0) {
-        const targetName = currentTx.contributorName.toLowerCase().trim();
-        const payerEntry = updatedCol.expectedPayers.find(
-          (payer) => payer.status === 'PENDING' && payer.name.toLowerCase().trim() === targetName
-        );
+        const payerEntry = findPendingPayer(updatedCol.expectedPayers, currentTx);
         if (payerEntry) {
           payerEntry.status = 'PAID';
           payerEntry.paidAt = now;
@@ -202,15 +222,28 @@ exports.initializePayment = async (req, res) => {
 
     const unitOrBase = Number(collection.amount || collection.perPersonAmount || collection.totalTarget || 0);
     const requestedAmount = Number(amount) || 0;
+
+    // SPLIT (fixed bill split): everyone pays exactly perPersonAmount
+    const splitAmount = Number(collection.perPersonAmount) || 0;
+    const isFixedSplit =
+      collection.mode === 'SPLIT' && collection.type !== 'INVENTORY' && splitAmount > 0;
+    if (isFixedSplit && requestedAmount > 0 && requestedAmount !== splitAmount) {
+      return res.status(400).json({
+        message: `Amount must be exactly \u20A6${splitAmount.toLocaleString('en-NG')} for this bill split`,
+      });
+    }
+
     const baseAmount =
       collection.type === 'INVENTORY'
         ? unitOrBase * qty
+        : isFixedSplit
+        ? splitAmount
         : requestedAmount > 0
         ? requestedAmount
         : unitOrBase;
 
     if (!baseAmount || baseAmount < 100) {
-      return res.status(400).json({ message: 'Payment amount must be at least â‚¦100' });
+      return res.status(400).json({ message: 'Payment amount must be at least \u20A6100' });
     }
 
     const passFeeToPayer =
@@ -300,6 +333,7 @@ exports.verifyPayment = async (req, res) => {
       const response = await fetch(url, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(REQUERY_TIMEOUT_MS),
       });
       if (response.ok) {
         iswData = await response.json();
@@ -356,7 +390,7 @@ exports.handleWebhook = async (req, res) => {
         merchantCode
       )}&transactionreference=${encodeURIComponent(tx.txnRef)}&amount=${amountKobo}`;
 
-      const response = await fetch(url, { method: 'GET' });
+      const response = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(REQUERY_TIMEOUT_MS) });
       const iswData = response.ok ? await response.json() : null;
 
       if (isVerifiedInterswitchPayment(iswData, amountKobo)) {
