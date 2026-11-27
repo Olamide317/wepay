@@ -7,7 +7,8 @@ import { Card } from '../components/ui/Card';
 import { Checkbox, Input } from '../components/ui/FormControls';
 import { AlertBanner } from '../components/ui/StateViews';
 import { useAuth } from '../context/AuthContext';
-import { isValidEmail, isValidNigerianPhone, slugify } from '../utils/formatters';
+import { formatDisplayName, isValidEmail, isValidNigerianPhone, slugify } from '../utils/formatters';
+import fundingImage from '../assets/images/funding.jpg';
 
 interface RegisterErrors {
   fullName?: string;
@@ -75,7 +76,7 @@ export const RegisterPage: React.FC = () => {
     setLoading(true);
     try {
       await register({
-        fullName,
+        fullName: formatDisplayName(fullName),
         email,
         phone,
         handle: slugify(handle),
@@ -93,8 +94,14 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center px-4 py-10">
-      <div className="w-full max-w-lg mx-auto space-y-6">
+    <div
+      className="relative min-h-screen flex flex-col justify-center px-4 py-10 bg-cover bg-center overflow-hidden"
+      style={{
+        backgroundImage: `linear-gradient(rgba(248, 250, 252, 0.68), rgba(248, 250, 252, 0.68)), url(${fundingImage})`,
+      }}
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,255,255,0.72),transparent_38%)] pointer-events-none" aria-hidden="true" />
+      <div className="relative w-full max-w-lg mx-auto space-y-6">
         <div className="flex flex-col items-center text-center space-y-2">
           <Link to="/" aria-label="Return to WePay Home">
             <WePayLogo size="lg" />
@@ -115,7 +122,7 @@ export const RegisterPage: React.FC = () => {
               label="Full name"
               required
               autoComplete="name"
-              placeholder="e.g. Tunde Adeyemi"
+              placeholder="Enter your full name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               error={errors.fullName}
@@ -127,7 +134,7 @@ export const RegisterPage: React.FC = () => {
                 type="email"
                 required
                 autoComplete="email"
-                placeholder="tunde@domain.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 error={errors.email}
@@ -137,7 +144,7 @@ export const RegisterPage: React.FC = () => {
                 type="tel"
                 required
                 autoComplete="tel"
-                placeholder="0803 412 8890"
+                placeholder="0800 000 0000"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 error={errors.phone}
@@ -147,10 +154,10 @@ export const RegisterPage: React.FC = () => {
             <Input
               label="Organizer handle"
               required
-              placeholder="tunde.lagos"
+              placeholder="your-handle"
               value={handle}
               onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9.-]/g, ''))}
-              hint={`Your public collection hub: wepay.ng/u/${slugify(handle) || 'your-handle'}`}
+              hint={`Your public collection hub: /u/${slugify(handle) || 'your-handle'}`}
               error={errors.handle}
             />
 

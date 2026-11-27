@@ -7,7 +7,6 @@ import {
   Download,
   Printer,
   RefreshCw,
-  ShieldAlert,
   XCircle,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -15,7 +14,7 @@ import { Link, useParams } from 'react-router-dom';
 import { WePayLogo } from '../components/WePayLogo';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { AlertBanner, LoadingRows } from '../components/ui/StateViews';
+import { LoadingRows } from '../components/ui/StateViews';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { PublicLayout } from '../layouts/PublicLayout';
 import { wepayService } from '../services/wepayService';
@@ -53,12 +52,18 @@ export const ReceiptPage: React.FC = () => {
     loadReceipt(false);
   }, [code]);
 
-  const handleSandboxVerifyNow = async () => {
-    if (!code) return;
+  const handleVerifyNow = async () => {
+    if (!data || !code) return;
     setRefreshing(true);
+    setError(null);
     try {
-      const updated = await wepayService.simulateSandboxVerification(code, 'SUCCESS');
+      const updated = await wepayService.verifyPaymentAndGetReceipt(
+        data.transaction.txnRef,
+        code
+      );
       setData(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to verify payment status.');
     } finally {
       setRefreshing(false);
     }
@@ -90,7 +95,7 @@ export const ReceiptPage: React.FC = () => {
   .total { font-weight: 700; font-size: 16px; }
 </style></head><body>
   <h1>WePay Digital Receipt</h1>
-  <p class="muted">Status: ${tx.status} ${data.isSimulated ? '(Sandbox Simulation)' : ''}</p>
+  <p class="muted">Status: ${tx.status}</p>
   <div class="row"><span>Receipt Code</span><strong>${tx.receiptCode}</strong></div>
   <div class="row"><span>Collection</span><span>${collection.title}</span></div>
   <div class="row"><span>Contributor</span><span>${tx.contributorName} (${tx.contributorEmail})</span></div>
@@ -150,7 +155,7 @@ export const ReceiptPage: React.FC = () => {
     );
   }
 
-  const { transaction: tx, collection, isSimulated } = data;
+  const { transaction: tx, collection } = data;
   const receiptUrl =
     typeof window !== 'undefined'
       ? `${window.location.origin}/receipt/${tx.receiptCode}`
@@ -180,17 +185,6 @@ export const ReceiptPage: React.FC = () => {
             </Button>
           </div>
         </div>
-
-        {/* Sandbox Notice */}
-        {(isSimulated || tx.isSimulated) && (
-          <div className="no-print">
-            <AlertBanner
-              variant="warning"
-              title="Sandbox Demonstration Receipt"
-              message="Generated in Prototype Sandbox Mode. In production, receipt issuance and verification depend strictly on backend Interswitch transaction requery."
-            />
-          </div>
-        )}
 
         {/* Receipt Card */}
         <Card padding="lg" className="print-only-card space-y-6">
@@ -244,13 +238,11 @@ export const ReceiptPage: React.FC = () => {
                 loading={refreshing}
               >
                 <RefreshCw className="h-3.5 w-3.5" />
-                <span>Check Status</span>
+                <span>Refresh Status</span>
               </Button>
-              {(isSimulated || tx.isSimulated) && (
-                <Button size="sm" onClick={handleSandboxVerifyNow} loading={refreshing}>
-                  Simulate Backend Verification Success
-                </Button>
-              )}
+              <Button size="sm" onClick={handleVerifyNow} loading={refreshing}>
+                Verify via Backend Requery
+              </Button>
             </div>
           )}
 
@@ -370,12 +362,6 @@ export const ReceiptPage: React.FC = () => {
                 Scan to open <span className="font-mono-num">{tx.receiptCode}</span> against the
                 WePay backend receipt endpoint.
               </p>
-              {(isSimulated || tx.isSimulated) && (
-                <p className="text-[11px] text-amber-700 inline-flex items-center gap-1 pt-0.5">
-                  <ShieldAlert className="h-3 w-3 shrink-0" />
-                  <span>Sandbox receipt — not backend-verified against live Interswitch.</span>
-                </p>
-              )}
             </div>
           </div>
         </Card>

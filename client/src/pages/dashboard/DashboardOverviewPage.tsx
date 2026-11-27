@@ -18,13 +18,11 @@ import { Card } from '../../components/ui/Card';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { AlertBanner, EmptyState, LoadingRows } from '../../components/ui/StateViews';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { useAuth } from '../../context/AuthContext';
 import { wepayService } from '../../services/wepayService';
 import { Collection, CollectionStatus, Transaction } from '../../types/wepay';
 import { formatDate, formatNaira, getShortModeLabel } from '../../utils/formatters';
 
 export const DashboardOverviewPage: React.FC = () => {
-  const { isMockMode } = useAuth();
   const navigate = useNavigate();
 
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -121,18 +119,12 @@ export const DashboardOverviewPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {isMockMode && (
-        <AlertBanner
-          variant="info"
-          message="Prototype Sandbox Mode: Summary metrics and collections shown below are sample demonstration figures persisted locally in your browser. Connect VITE_API_BASE_URL in .env to use live backend data."
-        />
-      )}
-
       {/* Page Heading */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200/80 pb-5">
         <div>
-          <h1 className="font-display text-2xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-sm text-slate-600 mt-0.5">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-indigo-600">Workspace</p>
+          <h1 className="font-display text-2xl sm:text-[28px] font-bold tracking-tight text-slate-950">Dashboard</h1>
+          <p className="text-sm text-slate-600 mt-1">
             Monitor collection totals, active links, and incoming contributor payments.
           </p>
         </div>
@@ -160,9 +152,10 @@ export const DashboardOverviewPage: React.FC = () => {
 
       {/* Summary Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Card padding="md">
+        <Card padding="md" className="relative overflow-hidden">
+          <div className="absolute left-0 top-5 h-8 w-1 rounded-r-full bg-indigo-500" aria-hidden="true" />
           <p className="text-xs font-medium text-slate-500">
-            Total Amount Collected {isMockMode && '· Sample'}
+            Total Amount Collected
           </p>
           <p className="text-2xl font-bold font-mono-num text-slate-900 mt-2">
             {loading ? '—' : formatNaira(totalCollected)}

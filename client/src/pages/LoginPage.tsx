@@ -8,9 +8,10 @@ import { Checkbox, Input } from '../components/ui/FormControls';
 import { AlertBanner } from '../components/ui/StateViews';
 import { useAuth } from '../context/AuthContext';
 import { isValidEmail } from '../utils/formatters';
+import fundingImage from '../assets/images/funding.jpg';
 
 export const LoginPage: React.FC = () => {
-  const { login, isMockMode } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -54,16 +55,15 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const fillDemoCredentials = () => {
-    setEmail('tunde@wepay.ng');
-    setPassword('wepay2026');
-    setFieldErrors({});
-    setAuthError(null);
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center px-4 py-10">
-      <div className="w-full max-w-md mx-auto space-y-6">
+    <div
+      className="relative min-h-screen flex flex-col justify-center px-4 py-10 bg-cover bg-center overflow-hidden"
+      style={{
+        backgroundImage: `linear-gradient(rgba(248, 250, 252, 0.68), rgba(248, 250, 252, 0.68)), url(${fundingImage})`,
+      }}
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,255,255,0.72),transparent_38%)] pointer-events-none" aria-hidden="true" />
+      <div className="relative w-full max-w-md mx-auto space-y-6">
         <div className="flex flex-col items-center text-center space-y-2">
           <Link to="/" aria-label="Return to WePay Home">
             <WePayLogo size="lg" />
@@ -82,7 +82,7 @@ export const LoginPage: React.FC = () => {
             {forgotNotice && (
               <AlertBanner
                 variant="info"
-                message="Password reset emails are handled by the backend authentication service. In Prototype Sandbox Mode, use any email with a 6+ character password or click Fill Demo Credentials below."
+                message="Password reset is managed by your organizer account administrator. Contact support if you need help recovering access."
               />
             )}
 
@@ -137,23 +137,6 @@ export const LoginPage: React.FC = () => {
               <Lock className="h-4 w-4" />
               <span>{loading ? 'Signing in...' : 'Sign In'}</span>
             </Button>
-
-            {isMockMode && (
-              <div className="pt-3 border-t border-slate-100 space-y-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  fullWidth
-                  size="sm"
-                  onClick={fillDemoCredentials}
-                >
-                  Fill Demo Organizer Credentials (tunde@wepay.ng)
-                </Button>
-                <p className="text-[11px] text-slate-500 text-center">
-                  Prototype Sandbox Mode active. Test auth error state with fail@wepay.ng.
-                </p>
-              </div>
-            )}
           </form>
         </Card>
 

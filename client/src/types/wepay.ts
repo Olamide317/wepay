@@ -30,7 +30,7 @@ export interface Organizer {
   phone: string;
   handle: string;
   avatarUrl?: string;
-  avatarStorage?: 'local_indexeddb' | 'remote' | 'none';
+  avatarStorage?: 'none' | 'remote' | 'local_indexeddb';
   avatarUpdatedAt?: string;
   settlementBank?: SettlementBank;
   verified?: boolean;
@@ -40,7 +40,7 @@ export interface Organizer {
 export interface CustomField {
   id: string;
   label: string;
-  /** Supports new dynamic builder types plus legacy 'text' alias for backwards compatibility */
+  /** Supports dynamic builder types plus legacy 'text' alias for backwards compatibility */
   type: CustomFieldType | 'text';
   required: boolean;
   placeholder?: string;
@@ -68,11 +68,11 @@ export interface Collection {
   description: string;
   currency: 'NGN';
   pricingRule: PricingRule;
-  amount: number; // Fixed/suggested/unit price in NGN
-  targetAmount?: number; // For POOL
+  amount: number;
+  targetAmount?: number;
   amountRaised: number;
-  stockLimit?: number; // For INVENTORY
-  stockSold?: number; // For INVENTORY
+  stockLimit?: number;
+  stockSold?: number;
   maxQuantityPerOrder?: number;
   productImageUrl?: string;
   passFeeToPayer: boolean;
@@ -121,7 +121,7 @@ export interface PaymentInitializeRequest {
 
 export interface InterswitchCheckoutParams {
   txnRef: string;
-  amount: number; // Minor units (kobo) or NGN as specified by backend contract
+  amount: number;
   amountNaira: number;
   baseAmountNaira: number;
   feeAmountNaira: number;

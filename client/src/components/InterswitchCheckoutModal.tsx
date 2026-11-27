@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   Building2,
   Check,
@@ -113,14 +113,8 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
       return;
     }
 
-    const apiBaseUrl = getApiBaseUrl();
-    if (!apiBaseUrl) {
-      setPhase('SELECT');
-      setGatewayError('The WePay API URL is not configured for the Interswitch return URL.');
-      return;
-    }
-
     setPhase('GATEWAY_ACTIVE');
+    const apiBaseUrl = getApiBaseUrl() || window.location.origin;
 
     const paymentRequest = {
       merchant_code: params.merchantCode || 'MX6072',
@@ -159,6 +153,10 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
     setPhase('VERIFYING');
     try {
       await onCompleteVerification(outcome);
+    } catch (err) {
+      setGatewayError(
+        err instanceof Error ? err.message : 'Unable to verify payment with backend.'
+      );
     } finally {
       setPhase('SELECT');
     }

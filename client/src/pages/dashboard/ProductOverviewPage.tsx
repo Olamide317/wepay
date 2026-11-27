@@ -19,6 +19,7 @@ import {
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import fundImage from '../../assets/images/fund.jpg';
 
 const PROBLEMS = [
   {
@@ -91,7 +92,7 @@ const BENEFITS = [
   {
     title: 'Verified Digital Receipts',
     description:
-      'Contributors receive payment confirmation and digital proof of successful transactions after backend verification.',
+      'Contributors receive payment confirmation and digital proof of successful transactions after WePay Verification.',
     Icon: Receipt,
   },
   {
@@ -115,7 +116,14 @@ export const ProductOverviewPage: React.FC = () => {
   return (
     <div id="overview-top" className="space-y-12 pb-6">
       {/* SECTION A: HERO SECTION */}
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 lg:p-10">
+      <section
+        className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 lg:p-10 bg-cover bg-center shadow-[0_20px_56px_-18px_rgba(15,23,42,0.42)]"
+        style={{
+          backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.62)), url(${fundImage})`,
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
         <div className="max-w-3xl space-y-5">
           <p className="text-xs font-semibold tracking-wider uppercase text-indigo-600">
             WePay Platform Overview
@@ -165,7 +173,8 @@ export const ProductOverviewPage: React.FC = () => {
           </h2>
           <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
             Whether you are splitting a shared subscription, coordinating class dues, or funding a
-            celebration, collecting money in Nigeria usually ends up buried in group chat threads.
+            celebration, collecting money in Nigeria usually ends up buried in group chat messages
+            and wahala.
           </p>
         </div>
 
@@ -232,8 +241,8 @@ export const ProductOverviewPage: React.FC = () => {
             One Platform. Different Ways to Collect.
           </h2>
           <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-            Pick the collection rule that matches your group—whether everyone contributes a defined
-            amount toward a goal or gives flexibly at their own pace.
+            Pick the collection mode that matches your group—whether everyone contributes a specific
+            amount towards a goal or gives flexibly at their own pace.
           </p>
         </div>
 
@@ -272,10 +281,9 @@ export const ProductOverviewPage: React.FC = () => {
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                 <p className="text-xs font-semibold text-slate-900">How it works</p>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  The organizer sets a target pool amount and configures the expected contribution
-                  (fixed or minimum per contributor). WePay tracks total raised, displays paid and
-                  pending transactions, and automatically completes the collection once the target is
-                  reached.
+                  The organizer sets a target amount and sets the expected contribution (fixed or
+                  minimum per contributor). WePay tracks total raised, displays paid and pending
+                  transactions, and automatically completes the collection once the target is reached.
                 </p>
               </div>
 
@@ -339,7 +347,6 @@ export const ProductOverviewPage: React.FC = () => {
 
               <ul className="space-y-2 text-sm text-slate-700 pt-1">
                 {[
-                  'Flexible any-amount, minimum, or fixed Naira rules',
                   'Custom contributor fields for optional notes or details',
                   'Real-time organizer ledger and CSV transaction export',
                   'Verified digital QR receipts for successful payments',

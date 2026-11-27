@@ -9,7 +9,7 @@ import {
   SettlementBank,
   Transaction,
 } from '../types/wepay';
-import { slugify } from '../utils/formatters';
+import { formatDisplayName, slugify } from '../utils/formatters';
 import { apiRequest, isBackendConfigured, setAuthToken } from './apiClient';
 import { clearAllAvatarsFromIndexedDb } from './avatarStorage';
 import {
@@ -33,7 +33,8 @@ interface SandboxStore {
 // Normalizes backend { user } or { organizer } objects into Joshua's Organizer interface
 function normalizeOrganizer(raw: any): Organizer {
   const email = String(raw?.email || '');
-  const fullName = String(raw?.fullName || raw?.name || email.split('@')[0] || 'Organizer');
+  const rawFullName = String(raw?.fullName || raw?.name || email.split('@')[0] || 'Organizer');
+  const fullName = formatDisplayName(rawFullName) || 'Organizer';
   const handle = slugify(raw?.handle || fullName || email.split('@')[0] || 'organizer');
 
   return {
@@ -66,7 +67,9 @@ function normalizeCollection(raw: any): Collection {
       typeof raw?.organizerId === 'string'
         ? raw.organizerId
         : String(raw?.organizer?._id || raw?.organizer || ''),
-    organizerName: String(raw?.organizerName || raw?.organizer?.fullName || 'Organizer'),
+    organizerName:
+      formatDisplayName(String(raw?.organizerName || raw?.organizer?.fullName || 'Organizer')) ||
+      'Organizer',
     organizerHandle: String(
       raw?.organizerHandle ||
         raw?.organizer?.handle ||
@@ -89,6 +92,7 @@ function normalizeCollection(raw: any): Collection {
     amountRaised: Number(raw?.amountRaised ?? raw?.totalCollected ?? raw?.collectedAmount ?? 0),
     stockLimit: raw?.stockLimit !== undefined && raw?.stockLimit !== null ? Number(raw.stockLimit) : undefined,
     stockSold: Number(raw?.stockSold ?? raw?.paidCount ?? 0),
+    productImageUrl: raw?.productImageUrl || undefined,
     maxQuantityPerOrder:
       raw?.maxQuantityPerOrder !== undefined ? Number(raw.maxQuantityPerOrder) : 5,
     passFeeToPayer: raw?.passFeeToPayer !== undefined ? Boolean(raw.passFeeToPayer) : true,
@@ -97,6 +101,13 @@ function normalizeCollection(raw: any): Collection {
     expiresAt: raw?.expiresAt,
     createdAt: raw?.createdAt || new Date().toISOString(),
     contributorCount: Number(raw?.contributorCount ?? raw?.paidCount ?? 0),
+  };
+}
+
+function normalizeTransaction(raw: Transaction): Transaction {
+  return {
+    ...raw,
+    contributorName: formatDisplayName(String(raw?.contributorName || '')) || raw?.contributorName,
   };
 }
 
@@ -601,7 +612,9 @@ export const wepayService = {
       );
       return {
         collection: normalizeCollection(res.collection),
-        transactions: Array.isArray(res.transactions) ? res.transactions : [],
+        transactions: Array.isArray(res.transactions)
+          ? res.transactions.map(normalizeTransaction)
+          : [],
         isMock: false,
       };
     }
@@ -694,7 +707,11 @@ export const wepayService = {
         method: 'POST',
         body: JSON.stringify(payload),
       });
-      return { ...res, isMock: false };
+      return {
+        ...res,
+        transaction: normalizeTransaction(res.transaction),
+        isMock: false,
+      };
     }
 
     await delay(500);
@@ -797,7 +814,7 @@ export const wepayService = {
       throw new Error('Hosted checkout verification requires the WePay backend.');
     }
 
-    return apiRequest<{
+    const res = await apiRequest<{
       transaction: Transaction;
       interswitchResponse?: {
         ResponseCode?: string;
@@ -808,6 +825,10 @@ export const wepayService = {
       method: 'POST',
       body: JSON.stringify({ txnRef }),
     });
+    return {
+      ...res,
+      transaction: normalizeTransaction(res.transaction),
+    };
   },
 
   async simulateSandboxVerification(
@@ -896,10 +917,19 @@ export const wepayService = {
     };
   },
 
+  async verifyPaymentAndGetReceipt(txnRef: string, receiptCode: string): Promise<ReceiptData> {
+    await this.verifyPaymentByReference(txnRef);
+    return this.getReceipt(receiptCode);
+  },
+
   async getReceipt(receiptCode: string): Promise<ReceiptData> {
     if (isBackendConfigured()) {
       const res = await apiRequest<ReceiptData>(`/api/payments/receipt/${receiptCode}`);
-      return { ...res, isSimulated: false };
+      return {
+        ...res,
+        transaction: normalizeTransaction(res.transaction),
+        isSimulated: false,
+      };
     }
 
     await delay(300);
