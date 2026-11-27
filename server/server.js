@@ -77,6 +77,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/collections", collectionRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/public", collectionRoutes);
+app.use("/api/public", paymentRoutes);
 
 // 404 fallback
 app.use((req, res) => {
