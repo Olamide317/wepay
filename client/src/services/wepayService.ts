@@ -776,6 +776,7 @@ export const wepayService = {
       feeAmountNaira: sandboxFee,
       merchantCode: 'SANDBOX_MERCHANT',
       payItemId: 'SANDBOX_PAY_ITEM',
+      mode: 'TEST',
       currency: '566',
       receiptCode,
       isSandboxSimulation: true,
@@ -784,16 +785,29 @@ export const wepayService = {
     return { checkoutParams, transaction: pendingTx, isMock: true };
   },
 
-  async verifyPaymentByReference(txnRef: string): Promise<Transaction> {
+  async verifyPaymentByReference(txnRef: string): Promise<{
+    transaction: Transaction;
+    interswitchResponse?: {
+      ResponseCode?: string;
+      ResponseDescription?: string;
+    } | null;
+    verificationError?: string;
+  }> {
     if (!isBackendConfigured()) {
       throw new Error('Hosted checkout verification requires the WePay backend.');
     }
 
-    const res = await apiRequest<{ transaction: Transaction }>('/api/payments/verify', {
+    return apiRequest<{
+      transaction: Transaction;
+      interswitchResponse?: {
+        ResponseCode?: string;
+        ResponseDescription?: string;
+      } | null;
+      verificationError?: string;
+    }>('/api/payments/verify', {
       method: 'POST',
       body: JSON.stringify({ txnRef }),
     });
-    return res.transaction;
   },
 
   async simulateSandboxVerification(

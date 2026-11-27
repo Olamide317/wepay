@@ -127,6 +127,7 @@ export interface InterswitchCheckoutParams {
   feeAmountNaira: number;
   merchantCode: string;
   payItemId: string;
+  mode: 'TEST' | 'LIVE';
   currency: '566' | 'NGN';
   receiptCode: string;
   isSandboxSimulation: boolean;

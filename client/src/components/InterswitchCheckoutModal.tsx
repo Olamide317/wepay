@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Smartphone,
 } from 'lucide-react';
+import { getApiBaseUrl } from '../services/apiClient';
 import { InterswitchCheckoutParams } from '../types/wepay';
 import { formatNaira } from '../utils/formatters';
 import { Button } from './ui/Button';
@@ -32,7 +33,10 @@ interface InterswitchCheckoutModalProps {
 
 type PaymentMethod = 'CARD' | 'TRANSFER' | 'USSD';
 
-const ISW_SCRIPT_URL = 'https://newwebpay.qa.interswitchng.com/inline-checkout.js';
+const ISW_SCRIPT_URLS: Record<InterswitchCheckoutParams['mode'], string> = {
+  TEST: 'https://newwebpay-sandbox.interswitchng.com/inline-checkout.js',
+  LIVE: 'https://newwebpay.interswitchng.com/inline-checkout.js',
+};
 
 const QA_TEST_CARD = {
   pan: '5060990580000217499',
@@ -42,15 +46,14 @@ const QA_TEST_CARD = {
   otp: '123456',
 };
 
-const ensureInterswitchScript = (): Promise<boolean> => {
-  if (typeof window.webpayCheckout === 'function') {
+const ensureInterswitchScript = (mode: InterswitchCheckoutParams['mode']): Promise<boolean> => {
+  const scriptUrl = ISW_SCRIPT_URLS[mode];
+  const existing = Array.from(document.scripts).find((script) => script.src === scriptUrl);
+  if (typeof window.webpayCheckout === 'function' && existing) {
     return Promise.resolve(true);
   }
 
   return new Promise((resolve) => {
-    const existing = document.querySelector<HTMLScriptElement>(
-      'script[src*="inline-checkout.js"]'
-    );
     if (existing) {
       existing.addEventListener(
         'load',
@@ -63,7 +66,7 @@ const ensureInterswitchScript = (): Promise<boolean> => {
     }
 
     const script = document.createElement('script');
-    script.src = ISW_SCRIPT_URL;
+    script.src = scriptUrl;
     script.async = true;
     script.onload = () => resolve(typeof window.webpayCheckout === 'function');
     script.onerror = () => resolve(false);
@@ -86,7 +89,8 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
 
   if (!params) return null;
 
-  const isLiveGateway = !params.isSandboxSimulation;
+  const isRemoteGateway = !params.isSandboxSimulation;
+  const isTestMode = params.mode === 'TEST';
 
   const handleCopyTestCard = async () => {
     try {
@@ -102,12 +106,17 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
     setGatewayError(null);
     setPhase('LOADING_SDK');
 
-    const sdkReady = await ensureInterswitchScript();
+    const sdkReady = await ensureInterswitchScript(params.mode);
     if (!sdkReady || typeof window.webpayCheckout !== 'function') {
       setPhase('SELECT');
-      setGatewayError(
-        'Could not reach newwebpay.qa.interswitchng.com (check network/ad-blocker), or click "Verify via Backend Requery" below to complete QA verification.'
-      );
+      setGatewayError(`Could not load the Interswitch ${params.mode} checkout script. Check your network or try backend requery.`);
+      return;
+    }
+
+    const apiBaseUrl = getApiBaseUrl();
+    if (!apiBaseUrl) {
+      setPhase('SELECT');
+      setGatewayError('The WePay API URL is not configured for the Interswitch return URL.');
       return;
     }
 
@@ -120,10 +129,8 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
       amount: String(params.amount),
       currency: 566,
       cust_email: contributorEmail || 'contributor@wepay.ng',
-      site_redirect_url: `${window.location.origin}${window.location.pathname}?txnref=${encodeURIComponent(
-        params.txnRef
-      )}`,
-      mode: 'TEST',
+      site_redirect_url: new URL('/api/payments/redirect-return', apiBaseUrl).toString(),
+      mode: params.mode,
       onComplete: async (response: Record<string, unknown>) => {
         const respCode = String(response?.resp || response?.ResponseCode || '');
         if (respCode === '00') {
@@ -167,8 +174,10 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
       onClose={phase === 'VERIFYING' || phase === 'LOADING_SDK' ? () => {} : onClose}
       title="Interswitch Web Checkout"
       description={
-        isLiveGateway
-          ? 'Connected to Interswitch IPG QA Sandbox — verified via server-side transaction requery.'
+        isRemoteGateway
+          ? params.mode === 'LIVE'
+            ? 'Connected to Interswitch production IPG and verified via server-side requery.'
+            : 'Connected to Interswitch sandbox IPG and verified via server-side requery.'
           : 'Local mock sandbox mode.'
       }
       size="md"
@@ -179,9 +188,11 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
           <div className="flex-1">
             <div className="flex items-center justify-between gap-2">
               <p className="font-semibold">
-                {isLiveGateway ? 'Interswitch IPG QA Gateway Ready' : 'Offline Sandbox Mode'}
+                {isRemoteGateway
+                  ? `Interswitch ${params.mode} Gateway Ready`
+                  : 'Offline Sandbox Mode'}
               </p>
-              {isLiveGateway && (
+              {isRemoteGateway && isTestMode && (
                 <button
                   type="button"
                   onClick={handleCopyTestCard}
@@ -192,7 +203,7 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
                 </button>
               )}
             </div>
-            {isLiveGateway && (
+            {isRemoteGateway && isTestMode && (
               <p className="mt-1 font-mono-num text-[11px] text-emerald-900">
                 Verve: {QA_TEST_CARD.pan} • Exp: {QA_TEST_CARD.expiry} • CVV: {QA_TEST_CARD.cvv} •
                 PIN: {QA_TEST_CARD.pin} • OTP: {QA_TEST_CARD.otp}
@@ -287,7 +298,7 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
             </div>
 
             <div className="space-y-2.5 pt-1">
-              {isLiveGateway ? (
+              {isRemoteGateway ? (
                 <>
                   <Button fullWidth size="lg" onClick={handleLaunchInterswitch}>
                     <ExternalLink className="h-4 w-4" />

@@ -79,10 +79,16 @@ export const PublicCollectionPage: React.FC = () => {
     setInitError(null);
     wepayService
       .verifyPaymentByReference(returnTxnRef)
-      .then((transaction) => {
+      .then(({ transaction, interswitchResponse, verificationError }) => {
         if (!active) return;
         if (transaction.status !== 'SUCCESS') {
-          throw new Error('Interswitch has not confirmed this payment yet. Please retry verification.');
+          const reason =
+            verificationError ||
+            interswitchResponse?.ResponseDescription ||
+            (interswitchResponse?.ResponseCode
+              ? `Interswitch response ${interswitchResponse.ResponseCode}.`
+              : 'No successful confirmation was returned.');
+          throw new Error(`Payment is not confirmed: ${reason}`);
         }
         navigate(`/receipt/${encodeURIComponent(transaction.receiptCode)}`, { replace: true });
       })
@@ -340,12 +346,35 @@ export const PublicCollectionPage: React.FC = () => {
 
   const handleCheckoutComplete = async (outcome: 'SUCCESS' | 'FAILED' | 'PENDING') => {
     if (!checkoutParams) return;
-    const receipt = await wepayService.simulateSandboxVerification(
-      checkoutParams.receiptCode,
-      outcome
-    );
     setCheckoutOpen(false);
-    navigate(`/receipt/${receipt.transaction.receiptCode}`);
+    setInitError(null);
+    try {
+      if (!checkoutParams.isSandboxSimulation) {
+        const { transaction, interswitchResponse, verificationError } =
+          await wepayService.verifyPaymentByReference(checkoutParams.txnRef);
+        if (transaction.status !== 'SUCCESS') {
+          const reason =
+            verificationError ||
+            interswitchResponse?.ResponseDescription ||
+            (interswitchResponse?.ResponseCode
+              ? `Interswitch response ${interswitchResponse.ResponseCode}.`
+              : 'No successful confirmation was returned.');
+          throw new Error(`Payment is not confirmed: ${reason}`);
+        }
+        navigate(`/receipt/${encodeURIComponent(transaction.receiptCode)}`);
+        return;
+      }
+
+      const receipt = await wepayService.simulateSandboxVerification(
+        checkoutParams.receiptCode,
+        outcome
+      );
+      navigate(`/receipt/${encodeURIComponent(receipt.transaction.receiptCode)}`);
+    } catch (err) {
+      setInitError(
+        err instanceof Error ? err.message : 'Unable to verify the Interswitch transaction.'
+      );
+    }
   };
 
   return (

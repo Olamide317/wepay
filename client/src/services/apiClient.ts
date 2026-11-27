@@ -11,6 +11,10 @@ export function isBackendConfigured(): boolean {
   return Boolean(API_BASE_URL) && useMock !== 'true';
 }
 
+export function getApiBaseUrl(): string {
+  return API_BASE_URL;
+}
+
 export function getAuthToken(): string | null {
   try {
     return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);

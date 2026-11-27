@@ -3,13 +3,43 @@ const mongoose = require('mongoose');
 const Collection = require('../models/Collection');
 const Transaction = require('../models/Transaction');
 
-const getIswConfig = () => ({
-  merchantCode: process.env.ISW_MERCHANT_CODE || process.env.INTERSWITCH_MERCHANT_CODE || 'MX6072',
-  payItemId: process.env.ISW_PAY_ITEM_ID || process.env.INTERSWITCH_PAY_ITEM_ID || '9405967',
-  requeryBaseUrl:
-    process.env.ISW_REQUERY_URL ||
-    'https://qa.interswitchng.com/collections/api/v1/gettransaction.json',
-});
+const getIswConfig = () => {
+  const mode = String(process.env.ISW_MODE || 'TEST').trim().toUpperCase();
+  if (mode !== 'TEST' && mode !== 'LIVE') {
+    const error = new Error('ISW_MODE must be set to TEST or LIVE.');
+    error.status = 500;
+    throw error;
+  }
+
+  const configuredMerchantCode =
+    process.env.ISW_MERCHANT_CODE || process.env.INTERSWITCH_MERCHANT_CODE;
+  const configuredPayItemId =
+    process.env.ISW_PAY_ITEM_ID || process.env.INTERSWITCH_PAY_ITEM_ID;
+  if (
+    mode === 'LIVE' &&
+    (!configuredMerchantCode ||
+      !configuredPayItemId ||
+      configuredMerchantCode === 'MX6072' ||
+      configuredPayItemId === '9405967')
+  ) {
+    const error = new Error(
+      'Live IPG requires your production ISW_MERCHANT_CODE and ISW_PAY_ITEM_ID from Interswitch.'
+    );
+    error.status = 503;
+    throw error;
+  }
+
+  return {
+    mode,
+    merchantCode: configuredMerchantCode || 'MX6072',
+    payItemId: configuredPayItemId || '9405967',
+    requeryBaseUrl:
+      process.env.ISW_REQUERY_URL ||
+      (mode === 'LIVE'
+        ? 'https://webpay.interswitchng.com/collections/api/v1/gettransaction'
+        : 'https://sandbox.interswitchng.com/collections/api/v1/gettransaction'),
+  };
+};
 
 const isVerifiedInterswitchPayment = (response, expectedAmountKobo) =>
   response?.ResponseCode === '00' &&
@@ -218,6 +248,7 @@ exports.initializePayment = async (req, res) => {
     const standardFee = Math.min(Math.round(baseAmount * 0.015) + 50, 2000);
     const feeAmount = passFeeToPayer ? standardFee : 0;
     const totalPaid = baseAmount + feeAmount;
+    const { merchantCode, payItemId, mode } = getIswConfig();
 
     const txnRef = `WP-${Date.now()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
     const receiptCode = `RCP-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
@@ -241,16 +272,15 @@ exports.initializePayment = async (req, res) => {
       status: 'PENDING',
     });
 
-    const { merchantCode, payItemId } = getIswConfig();
-
     const checkoutParams = {
       txnRef,
-      amount: totalPaid * 100,
+      amount: Math.round(totalPaid * 100),
       amountNaira: totalPaid,
       baseAmountNaira: baseAmount,
       feeAmountNaira: feeAmount,
       merchantCode,
       payItemId,
+      mode,
       currency: '566',
       receiptCode,
       isSandboxSimulation: false,
@@ -261,6 +291,9 @@ exports.initializePayment = async (req, res) => {
       transaction: formatTransactionResponse(tx, collection),
     });
   } catch (error) {
+    if (error.status === 503) {
+      return res.status(503).json({ message: error.message });
+    }
     return res.status(500).json({ message: 'Failed to initialize payment', error: error.message });
   }
 };
@@ -290,12 +323,13 @@ exports.verifyPayment = async (req, res) => {
     }
 
     const { merchantCode, requeryBaseUrl } = getIswConfig();
-    const amountKobo = tx.totalPaid * 100;
+    const amountKobo = Math.round(tx.totalPaid * 100);
     const url = `${requeryBaseUrl}?merchantcode=${encodeURIComponent(
       merchantCode
     )}&transactionreference=${encodeURIComponent(tx.txnRef)}&amount=${amountKobo}`;
 
     let iswData = null;
+    let verificationError;
     try {
       const response = await fetch(url, {
         method: 'GET',
@@ -303,12 +337,25 @@ exports.verifyPayment = async (req, res) => {
       });
       if (response.ok) {
         iswData = await response.json();
+      } else {
+        verificationError = `Interswitch requery returned HTTP ${response.status}.`;
       }
-    } catch {
-      iswData = null;
+    } catch (error) {
+      console.error('Interswitch payment requery failed:', error);
+      verificationError = 'Unable to reach Interswitch to verify the payment. Please retry.';
     }
 
     const isApproved = isVerifiedInterswitchPayment(iswData, amountKobo);
+    if (
+      iswData?.ResponseCode === '00' &&
+      !(
+        Number.isFinite(Number(iswData.Amount)) &&
+        Number(iswData.Amount) === amountKobo
+      )
+    ) {
+      verificationError =
+        'Interswitch approved the transaction but returned an amount that does not match the expected amount.';
+    }
 
     if (isApproved) {
       const ref =
@@ -325,6 +372,7 @@ exports.verifyPayment = async (req, res) => {
     return res.status(200).json({
       transaction: formatTransactionResponse(tx, collection),
       interswitchResponse: iswData,
+      verificationError,
     });
   } catch (error) {
     return res.status(500).json({ message: 'Payment verification failed', error: error.message });
@@ -351,7 +399,7 @@ exports.handleWebhook = async (req, res) => {
 
     if (tx.status !== 'SUCCESS') {
       const { merchantCode, requeryBaseUrl } = getIswConfig();
-      const amountKobo = tx.totalPaid * 100;
+      const amountKobo = Math.round(tx.totalPaid * 100);
       const url = `${requeryBaseUrl}?merchantcode=${encodeURIComponent(
         merchantCode
       )}&transactionreference=${encodeURIComponent(tx.txnRef)}&amount=${amountKobo}`;
@@ -369,6 +417,41 @@ exports.handleWebhook = async (req, res) => {
     return res.status(200).json({ received: true, status: tx.status });
   } catch (error) {
     return res.status(500).json({ message: 'Webhook processing error', error: error.message });
+  }
+};
+
+exports.handleCheckoutRedirectReturn = async (req, res) => {
+  try {
+    const txnRef =
+      req.body?.txnref ||
+      req.body?.txnRef ||
+      req.body?.transactionreference ||
+      req.query?.txnref ||
+      req.query?.txnRef ||
+      req.query?.transactionreference;
+    if (!txnRef) {
+      return res.status(400).send('Missing Interswitch transaction reference.');
+    }
+
+    const transaction = await Transaction.findOne({ txnRef: String(txnRef).trim() });
+    if (!transaction) {
+      return res.status(404).send('Transaction not found.');
+    }
+
+    const collection = await Collection.findById(transaction.collectionId).select('slug');
+    if (!collection) {
+      return res.status(404).send('Collection not found.');
+    }
+
+    const configuredClientUrl =
+      process.env.CLIENT_URL || 'https://wepay-peach.vercel.app';
+    const clientOrigin = configuredClientUrl.split(',')[0].trim().replace(/\/+$/, '');
+    const redirectUrl = new URL(`/c/${encodeURIComponent(collection.slug)}`, clientOrigin);
+    redirectUrl.searchParams.set('txnref', transaction.txnRef);
+    return res.redirect(303, redirectUrl.toString());
+  } catch (error) {
+    console.error('Interswitch redirect handling failed:', error.message);
+    return res.status(500).send('Unable to return to the WePay checkout page.');
   }
 };
 

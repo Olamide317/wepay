@@ -761,6 +761,7 @@ const swaggerSpec = {
                         feeAmountNaira: { type: "number" },
                         merchantCode: { type: "string" },
                         payItemId: { type: "string" },
+                        mode: { type: "string", enum: ["TEST", "LIVE"], example: "TEST" },
                         currency: { type: "string", example: "566" },
                         receiptCode: { type: "string" },
                         isSandboxSimulation: { type: "boolean", example: false },
@@ -802,6 +803,7 @@ const swaggerSpec = {
                     transaction: { $ref: "#/components/schemas/Transaction" },
                     collection: { $ref: "#/components/schemas/Collection" },
                     interswitchResponse: { type: "object", nullable: true },
+                    verificationError: { type: "string" },
                   },
                 },
               },
@@ -809,6 +811,53 @@ const swaggerSpec = {
           },
           400: { description: "Transaction reference is missing" },
           404: { description: "Transaction not found" },
+        },
+      },
+    },
+    "/payments/redirect-return": {
+      get: {
+        tags: ["Payments"],
+        summary: "Handle a GET return from Interswitch and redirect back to checkout",
+        parameters: [
+          { name: "txnref", in: "query", required: true, schema: { type: "string" } },
+        ],
+        responses: {
+          303: {
+            description: "Redirect to the public collection page with txnref for server-side verification",
+            headers: { Location: { schema: { type: "string" } } },
+          },
+          404: { description: "Transaction or collection not found" },
+        },
+      },
+      post: {
+        tags: ["Payments"],
+        summary: "Handle Interswitch's form POST return and redirect back to checkout",
+        requestBody: {
+          required: true,
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                required: ["txnref"],
+                properties: {
+                  txnref: { type: "string" },
+                  amount: { type: "integer", description: "Returned amount in kobo; not trusted for settlement" },
+                  apprAmt: { type: "integer", description: "Approved amount in kobo" },
+                  resp: { type: "string", description: "Gateway response code; not trusted for settlement" },
+                  desc: { type: "string" },
+                  retRef: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          303: {
+            description: "Redirect to the public collection page with txnref for server-side verification",
+            headers: { Location: { schema: { type: "string" } } },
+          },
+          400: { description: "Transaction reference missing" },
+          404: { description: "Transaction or collection not found" },
         },
       },
     },
