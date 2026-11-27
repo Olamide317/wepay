@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   Building2,
   Check,
@@ -27,7 +27,7 @@ interface InterswitchCheckoutModalProps {
   collectionTitle: string;
   contributorEmail: string;
   onClose: () => void;
-  onCompleteVerification: (outcome: 'SUCCESS' | 'FAILED' | 'PENDING') => Promise<void>;
+  onCompleteVerification: () => Promise<void>;
 }
 
 type PaymentMethod = 'CARD' | 'TRANSFER' | 'USSD';
@@ -86,8 +86,6 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
 
   if (!params) return null;
 
-  const isLiveGateway = !params.isSandboxSimulation;
-
   const handleCopyTestCard = async () => {
     try {
       await navigator.clipboard.writeText(QA_TEST_CARD.pan);
@@ -106,7 +104,7 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
     if (!sdkReady || typeof window.webpayCheckout !== 'function') {
       setPhase('SELECT');
       setGatewayError(
-        'Could not reach newwebpay.qa.interswitchng.com (check network/ad-blocker), or click "Verify via Backend Requery" below to complete QA verification.'
+        'Could not reach newwebpay.qa.interswitchng.com (check network/ad-blocker), or click "Verify via Backend Requery" below to complete verification.'
       );
       return;
     }
@@ -114,20 +112,22 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
     setPhase('GATEWAY_ACTIVE');
 
     const paymentRequest = {
-      merchant_code: params.merchantCode || 'MX6072',
-      pay_item_id: params.payItemId || '9405967',
+      merchant_code: params.merchantCode,
+      pay_item_id: params.payItemId,
       txn_ref: params.txnRef,
       amount: String(params.amount),
       currency: 566,
-      cust_email: contributorEmail || 'contributor@wepay.ng',
-      site_redirect_url: `${window.location.origin}/receipt/${params.receiptCode}`,
+      cust_email: contributorEmail,
+      site_redirect_url: `${window.location.origin}${window.location.pathname}?txnref=${encodeURIComponent(
+        params.txnRef
+      )}`,
       mode: 'TEST',
       onComplete: async (response: Record<string, unknown>) => {
         const respCode = String(response?.resp || response?.ResponseCode || '');
         if (respCode === '00') {
           setPhase('VERIFYING');
           try {
-            await onCompleteVerification('SUCCESS');
+            await onCompleteVerification();
           } finally {
             setPhase('SELECT');
           }
@@ -145,11 +145,15 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
     window.webpayCheckout(paymentRequest);
   };
 
-  const handleManualRequery = async (outcome: 'SUCCESS' | 'FAILED' | 'PENDING') => {
+  const handleManualRequery = async () => {
     setGatewayError(null);
     setPhase('VERIFYING');
     try {
-      await onCompleteVerification(outcome);
+      await onCompleteVerification();
+    } catch (err) {
+      setGatewayError(
+        err instanceof Error ? err.message : 'Unable to verify payment with backend.'
+      );
     } finally {
       setPhase('SELECT');
     }
@@ -164,11 +168,7 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
       open={open}
       onClose={phase === 'VERIFYING' || phase === 'LOADING_SDK' ? () => {} : onClose}
       title="Interswitch Web Checkout"
-      description={
-        isLiveGateway
-          ? 'Connected to Interswitch IPG QA Sandbox — verified via server-side transaction requery.'
-          : 'Local mock sandbox mode.'
-      }
+      description="Connected to Interswitch IPG — verified via server-side transaction requery."
       size="md"
     >
       <div className="space-y-4">
@@ -176,26 +176,20 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
           <ShieldCheck className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" aria-hidden="true" />
           <div className="flex-1">
             <div className="flex items-center justify-between gap-2">
-              <p className="font-semibold">
-                {isLiveGateway ? 'Interswitch IPG QA Gateway Ready' : 'Offline Sandbox Mode'}
-              </p>
-              {isLiveGateway && (
-                <button
-                  type="button"
-                  onClick={handleCopyTestCard}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-medium cursor-pointer"
-                >
-                  {copiedCard ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                  <span>{copiedCard ? 'Copied PAN' : 'Copy Verve Test Card'}</span>
-                </button>
-              )}
+              <p className="font-semibold">Interswitch IPG Gateway Ready</p>
+              <button
+                type="button"
+                onClick={handleCopyTestCard}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-medium cursor-pointer"
+              >
+                {copiedCard ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                <span>{copiedCard ? 'Copied PAN' : 'Copy Verve Test Card'}</span>
+              </button>
             </div>
-            {isLiveGateway && (
-              <p className="mt-1 font-mono-num text-[11px] text-emerald-900">
-                Verve: {QA_TEST_CARD.pan} • Exp: {QA_TEST_CARD.expiry} • CVV: {QA_TEST_CARD.cvv} •
-                PIN: {QA_TEST_CARD.pin} • OTP: {QA_TEST_CARD.otp}
-              </p>
-            )}
+            <p className="mt-1 font-mono-num text-[11px] text-emerald-900">
+              Verve: {QA_TEST_CARD.pan} • Exp: {QA_TEST_CARD.expiry} • CVV: {QA_TEST_CARD.cvv} •
+              PIN: {QA_TEST_CARD.pin} • OTP: {QA_TEST_CARD.otp}
+            </p>
           </div>
         </div>
 
@@ -285,33 +279,24 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
             </div>
 
             <div className="space-y-2.5 pt-1">
-              {isLiveGateway ? (
-                <>
-                  <Button fullWidth size="lg" onClick={handleLaunchInterswitch}>
-                    <ExternalLink className="h-4 w-4" />
-                    <span>Pay {formatNaira(params.amountNaira)} on Interswitch</span>
-                  </Button>
+              <Button fullWidth size="lg" onClick={handleLaunchInterswitch}>
+                <ExternalLink className="h-4 w-4" />
+                <span>Pay {formatNaira(params.amountNaira)} on Interswitch</span>
+              </Button>
 
-                  <div className="pt-1 border-t border-slate-100 flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-slate-500">
-                      Gateway blocked or already paid?
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleManualRequery('SUCCESS')}
-                    >
-                      <Lock className="h-3.5 w-3.5" />
-                      <span>Verify via Backend Requery</span>
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <Button fullWidth size="lg" onClick={() => handleManualRequery('SUCCESS')}>
-                  <Lock className="h-4 w-4" />
-                  <span>Simulate Verified Payment ({formatNaira(params.amountNaira)})</span>
+              <div className="pt-1 border-t border-slate-100 flex items-center justify-between gap-2">
+                <span className="text-[11px] text-slate-500">
+                  Gateway blocked or already paid?
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleManualRequery}
+                >
+                  <Lock className="h-3.5 w-3.5" />
+                  <span>Verify via Backend Requery</span>
                 </Button>
-              )}
+              </div>
             </div>
           </>
         )}

@@ -1,27 +1,17 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  Building2,
-  Camera,
-  Download,
-  ExternalLink,
-  Pencil,
-  RotateCcw,
-  Trash2,
-} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Building2, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { OrganizerAvatar } from '../../components/OrganizerAvatar';
-import { ProfilePictureModal } from '../../components/ProfilePictureModal';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input, Select } from '../../components/ui/FormControls';
 import { AlertBanner } from '../../components/ui/StateViews';
+import { NIGERIAN_BANKS } from '../../constants/banks';
 import { useAuth } from '../../context/AuthContext';
-import { validateAvatarFile } from '../../services/avatarStorage';
-import { NIGERIAN_BANKS } from '../../services/mockData';
-import { resetSandboxData, wepayService } from '../../services/wepayService';
+import { wepayService } from '../../services/wepayService';
 
 export const ProfilePage: React.FC = () => {
-  const { organizer, isMockMode, setOrganizerState, refreshOrganizer } = useAuth();
+  const { organizer, setOrganizerState } = useAuth();
 
   const [bankCode, setBankCode] = useState(organizer?.settlementBank?.bankCode || '');
   const [accountNumber, setAccountNumber] = useState(
@@ -31,21 +21,6 @@ export const ProfilePage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [resetMessage, setResetMessage] = useState<string | null>(null);
-
-  // Profile picture upload & crop state
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const [avatarError, setAvatarError] = useState<string | null>(null);
-  const [avatarSuccess, setAvatarSuccess] = useState<string | null>(null);
-  const [removingAvatar, setRemovingAvatar] = useState(false);
-
-  // Organizer display name edit state
-  const [editingName, setEditingName] = useState(false);
-  const [fullNameDraft, setFullNameDraft] = useState(organizer?.fullName || '');
-  const [savingName, setSavingName] = useState(false);
-  const [nameError, setNameError] = useState<string | null>(null);
-  const [nameSuccess, setNameSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     setBankCode(organizer?.settlementBank?.bankCode || '');
@@ -60,104 +35,7 @@ export const ProfilePage: React.FC = () => {
     organizer?.settlementBank?.accountName,
   ]);
 
-  useEffect(() => {
-    setFullNameDraft(organizer?.fullName || '');
-    setEditingName(false);
-    setNameError(null);
-  }, [organizer?._id, organizer?.fullName]);
-
   if (!organizer) return null;
-
-  const handleTriggerFilePicker = () => {
-    setAvatarError(null);
-    setAvatarSuccess(null);
-    fileInputRef.current?.click();
-  };
-
-  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    // Reset input so choosing the same file again after cancel still triggers onChange
-    e.target.value = '';
-    if (!file) return;
-
-    setAvatarError(null);
-    setAvatarSuccess(null);
-
-    const validation = validateAvatarFile(file);
-    if (!validation.valid) {
-      setAvatarError(validation.error || 'Invalid image file.');
-      return;
-    }
-
-    setPendingFile(file);
-  };
-
-  const handleConfirmAvatarUpload = async (croppedBlob: Blob, fileName: string) => {
-    const res = await wepayService.updateProfilePicture(croppedBlob, fileName);
-    setOrganizerState(res.organizer);
-    setPendingFile(null);
-    setAvatarError(null);
-    setAvatarSuccess(
-      res.isMock
-        ? 'Profile picture saved locally in browser storage (IndexedDB).'
-        : 'Profile picture updated successfully.'
-    );
-  };
-
-  const handleRemoveAvatar = async () => {
-    if (!organizer.avatarUrl || removingAvatar) return;
-    setAvatarError(null);
-    setAvatarSuccess(null);
-    setRemovingAvatar(true);
-    try {
-      const res = await wepayService.removeProfilePicture();
-      setOrganizerState(res.organizer);
-      setAvatarSuccess('Profile picture removed.');
-    } catch (err) {
-      setAvatarError(
-        err instanceof Error ? err.message : 'Unable to remove profile picture.'
-      );
-    } finally {
-      setRemovingAvatar(false);
-    }
-  };
-
-  const handleOpenEditName = () => {
-    setFullNameDraft(organizer.fullName);
-    setNameError(null);
-    setNameSuccess(null);
-    setEditingName(true);
-  };
-
-  const handleCancelEditName = () => {
-    setFullNameDraft(organizer.fullName);
-    setNameError(null);
-    setEditingName(false);
-  };
-
-  const handleSaveName = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = fullNameDraft.trim();
-    setNameError(null);
-    setNameSuccess(null);
-
-    if (trimmed.length < 2) {
-      setNameError('Full name must be at least 2 characters.');
-      return;
-    }
-
-    setSavingName(true);
-    try {
-      const res = await wepayService.updateOrganizerName(trimmed);
-      setOrganizerState(res.organizer);
-      setEditingName(false);
-      setNameSuccess('Your display name has been updated.');
-    } catch (err) {
-      setNameError(err instanceof Error ? err.message : 'Unable to update name.');
-    } finally {
-      setSavingName(false);
-    }
-  };
 
   const handleSaveBank = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,153 +73,37 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  const handleResetDemo = async () => {
-    resetSandboxData();
-    await refreshOrganizer();
-    setAvatarError(null);
-    setAvatarSuccess(null);
-    setResetMessage('Prototype sandbox data has been restored to initial defaults.');
-  };
-
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
         <h1 className="font-display text-2xl font-bold text-slate-900">Account &amp; Profile</h1>
         <p className="text-sm text-slate-600 mt-0.5">
-          Manage your organizer identity, profile picture, public collection hub, and Naira
-          settlement bank.
+          Manage your organizer identity, public collection hub, and Naira settlement bank.
         </p>
       </div>
 
       <div className="grid md:grid-cols-12 gap-6 items-start">
         <Card className="md:col-span-5 space-y-5">
-          {/* Profile Picture Section */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <OrganizerAvatar
-                name={organizer.fullName}
-                avatarUrl={organizer.avatarUrl}
-                size="xl"
-              />
-              <div className="min-w-0 flex-1 space-y-0.5">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-base font-semibold text-slate-900 truncate">
-                    {organizer.fullName}
-                  </h2>
-                  {!editingName && (
-                    <button
-                      type="button"
-                      onClick={handleOpenEditName}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 shrink-0 cursor-pointer"
-                    >
-                      <Pencil className="h-3 w-3" />
-                      <span>Edit Name</span>
-                    </button>
-                  )}
-                </div>
-                <p className="text-xs text-slate-500 font-mono-num truncate">
-                  @{organizer.handle}
-                </p>
-                <p className="text-xs text-slate-500 pt-0.5">
-                  {organizer.avatarUrl
-                    ? organizer.avatarStorage === 'local_indexeddb'
-                      ? 'Profile picture saved locally'
-                      : 'Profile picture set'
-                    : 'No profile picture uploaded'}
-                </p>
-              </div>
-            </div>
-
-            {nameSuccess && <AlertBanner variant="success" message={nameSuccess} />}
-            {editingName && (
-              <form
-                onSubmit={handleSaveName}
-                noValidate
-                className="p-3.5 rounded-xl border border-indigo-200 bg-slate-50 space-y-3"
-              >
-                <Input
-                  label="Full Name"
-                  required
-                  value={fullNameDraft}
-                  onChange={(e) => {
-                    setFullNameDraft(e.target.value);
-                    setNameError(null);
-                  }}
-                  placeholder="Enter your full name"
-                  error={nameError || undefined}
-                />
-                <div className="flex items-center justify-end gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleCancelEditName}
-                    disabled={savingName}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" size="sm" loading={savingName}>
-                    {savingName ? 'Saving...' : 'Save Name'}
-                  </Button>
-                </div>
-              </form>
-            )}
-
-            {avatarError && <AlertBanner variant="error" message={avatarError} />}
-            {avatarSuccess && <AlertBanner variant="success" message={avatarSuccess} />}
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-              onChange={handleFileSelected}
-              aria-label="Choose profile picture file"
-              className="hidden"
+          <div className="flex items-center gap-4">
+            <OrganizerAvatar
+              name={organizer.fullName}
+              avatarUrl={organizer.avatarUrl}
+              size="xl"
             />
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleTriggerFilePicker}
-              >
-                <Camera className="h-3.5 w-3.5" />
-                <span>Update Profile Picture</span>
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleRemoveAvatar}
-                disabled={!organizer.avatarUrl || removingAvatar}
-                loading={removingAvatar}
-                className="text-red-600 hover:bg-red-50 hover:text-red-700 disabled:text-slate-400 disabled:hover:bg-transparent"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                <span>Remove Picture</span>
-              </Button>
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <h2 className="text-base font-semibold text-slate-900 truncate">
+                {organizer.fullName}
+              </h2>
+              <p className="text-xs text-slate-500 font-mono-num truncate">
+                @{organizer.handle}
+              </p>
             </div>
-            <p className="text-[11px] text-slate-500">
-              Accepted formats: JPG, JPEG, PNG, WEBP · Max size 5 MB
-            </p>
           </div>
 
           <dl className="space-y-2.5 pt-3 border-t border-slate-100 text-sm">
             <div>
               <dt className="text-xs text-slate-500">Full Name</dt>
-              <dd className="font-medium text-slate-900 flex items-center justify-between gap-2">
-                <span className="truncate">{organizer.fullName}</span>
-                {!editingName && (
-                  <button
-                    type="button"
-                    onClick={handleOpenEditName}
-                    className="text-xs font-medium text-indigo-600 hover:text-indigo-700 shrink-0 cursor-pointer"
-                  >
-                    Change
-                  </button>
-                )}
-              </dd>
+              <dd className="font-medium text-slate-900 truncate">{organizer.fullName}</dd>
             </div>
             <div>
               <dt className="text-xs text-slate-500">Email</dt>
@@ -349,7 +111,7 @@ export const ProfilePage: React.FC = () => {
             </div>
             <div>
               <dt className="text-xs text-slate-500">Phone</dt>
-              <dd className="font-mono-num text-slate-900">{organizer.phone}</dd>
+              <dd className="font-mono-num text-slate-900">{organizer.phone || '—'}</dd>
             </div>
           </dl>
 
@@ -423,48 +185,6 @@ export const ProfilePage: React.FC = () => {
           </form>
         </Card>
       </div>
-
-      {/* Export / Sandbox Controls */}
-      <Card>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">
-              Project Source Archive &amp; Sandbox Tools
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Download the complete standalone Vite React project (excluding node_modules) or reset
-              local sandbox demo data.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            <a href="/WePay-Frontend.zip" download="WePay-Frontend.zip">
-              <Button variant="outline" size="sm">
-                <Download className="h-3.5 w-3.5" />
-                <span>Download WePay-Frontend.zip</span>
-              </Button>
-            </a>
-            {isMockMode && (
-              <Button variant="ghost" size="sm" onClick={handleResetDemo}>
-                <RotateCcw className="h-3.5 w-3.5" />
-                <span>Reset Demo Data</span>
-              </Button>
-            )}
-          </div>
-        </div>
-        {resetMessage && (
-          <div className="mt-3">
-            <AlertBanner variant="success" message={resetMessage} />
-          </div>
-        )}
-      </Card>
-
-      <ProfilePictureModal
-        open={Boolean(pendingFile)}
-        file={pendingFile}
-        isMockMode={isMockMode}
-        onClose={() => setPendingFile(null)}
-        onConfirm={handleConfirmAvatarUpload}
-      />
     </div>
   );
 };

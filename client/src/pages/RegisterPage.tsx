@@ -7,7 +7,7 @@ import { Card } from '../components/ui/Card';
 import { Checkbox, Input } from '../components/ui/FormControls';
 import { AlertBanner } from '../components/ui/StateViews';
 import { useAuth } from '../context/AuthContext';
-import { isValidEmail, isValidNigerianPhone, slugify } from '../utils/formatters';
+import { formatDisplayName, isValidEmail, isValidNigerianPhone, slugify } from '../utils/formatters';
 
 interface RegisterErrors {
   fullName?: string;
@@ -72,7 +72,7 @@ export const RegisterPage: React.FC = () => {
     setLoading(true);
     try {
       await register({
-        fullName,
+        fullName: formatDisplayName(fullName),
         email,
         phone,
         handle: slugify(handle),
@@ -111,7 +111,7 @@ export const RegisterPage: React.FC = () => {
               label="Full name"
               required
               autoComplete="name"
-              placeholder="e.g. Tunde Adeyemi"
+              placeholder="Enter your full name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               error={errors.fullName}
@@ -123,7 +123,7 @@ export const RegisterPage: React.FC = () => {
                 type="email"
                 required
                 autoComplete="email"
-                placeholder="tunde@domain.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 error={errors.email}
@@ -133,7 +133,7 @@ export const RegisterPage: React.FC = () => {
                 type="tel"
                 required
                 autoComplete="tel"
-                placeholder="0803 412 8890"
+                placeholder="0800 000 0000"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 error={errors.phone}
@@ -143,10 +143,10 @@ export const RegisterPage: React.FC = () => {
             <Input
               label="Organizer handle"
               required
-              placeholder="tunde.lagos"
+              placeholder="your-handle"
               value={handle}
               onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9.-]/g, ''))}
-              hint={`Your public collection hub: wepay.ng/u/${slugify(handle) || 'your-handle'}`}
+              hint={`Your public collection hub: /u/${slugify(handle) || 'your-handle'}`}
               error={errors.handle}
             />
 

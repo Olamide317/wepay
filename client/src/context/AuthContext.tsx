@@ -6,8 +6,8 @@ import { Organizer } from '../types/wepay';
 interface AuthContextValue {
   organizer: Organizer | null;
   isAuthenticated: boolean;
+  isNewUser: boolean;
   isLoading: boolean;
-  isMockMode: boolean;
   login: (email: string, password: string, remember?: boolean) => Promise<void>;
   register: (data: {
     fullName: string;
@@ -21,19 +21,46 @@ interface AuthContextValue {
   logout: () => void;
 }
 
+const NEW_USER_STORAGE_KEY = 'wepay_is_new_user';
+
+function readIsNewUserFlag(): boolean {
+  try {
+    return typeof window !== 'undefined' && window.sessionStorage.getItem(NEW_USER_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeIsNewUserFlag(value: boolean): void {
+  try {
+    if (typeof window === 'undefined') return;
+    if (value) {
+      window.sessionStorage.setItem(NEW_USER_STORAGE_KEY, 'true');
+    } else {
+      window.sessionStorage.removeItem(NEW_USER_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage access errors
+  }
+}
+
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [organizer, setOrganizer] = useState<Organizer | null>(null);
+  const [isNewUser, setIsNewUser] = useState<boolean>(readIsNewUserFlag);
   const [isLoading, setIsLoading] = useState(true);
-  const isMockMode = wepayService.isMockMode();
 
   useEffect(() => {
     let active = true;
     async function hydrate() {
       const token = getAuthToken();
       if (!token) {
-        if (active) setIsLoading(false);
+        writeIsNewUserFlag(false);
+        if (active) {
+          setIsNewUser(false);
+          setIsLoading(false);
+        }
         return;
       }
       try {
@@ -41,6 +68,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (active) setOrganizer(org);
       } catch {
         setAuthToken(null);
+        writeIsNewUserFlag(false);
+        if (active) setIsNewUser(false);
       } finally {
         if (active) setIsLoading(false);
       }
@@ -53,6 +82,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string, remember = true) => {
     const res = await wepayService.login({ email, password, remember });
+    writeIsNewUserFlag(false);
+    setIsNewUser(false);
     setOrganizer(res.organizer);
   };
 
@@ -64,6 +95,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     password: string;
   }) => {
     const res = await wepayService.register(data);
+    writeIsNewUserFlag(true);
+    setIsNewUser(true);
     setOrganizer(res.organizer);
   };
 
@@ -74,6 +107,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     setAuthToken(null);
+    writeIsNewUserFlag(false);
+    setIsNewUser(false);
     setOrganizer(null);
   };
 
@@ -82,8 +117,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         organizer,
         isAuthenticated: Boolean(organizer),
+        isNewUser,
         isLoading,
-        isMockMode,
         login,
         register,
         refreshOrganizer,

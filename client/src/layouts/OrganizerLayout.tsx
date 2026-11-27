@@ -18,7 +18,7 @@ import { OrganizerAvatar } from '../components/OrganizerAvatar';
 import { WePayLogo } from '../components/WePayLogo';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
-import { formatFullHeaderDate } from '../utils/formatters';
+import { formatDisplayName, formatFullHeaderDate } from '../utils/formatters';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Overview', Icon: Compass, end: true },
@@ -34,7 +34,7 @@ interface OrganizerLayoutProps {
 }
 
 export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = true }) => {
-  const { organizer, isAuthenticated, isLoading, isMockMode, logout } = useAuth();
+  const { organizer, isAuthenticated, isNewUser, isLoading, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -91,13 +91,13 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
                 className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-100 transition-colors"
               >
                 <OrganizerAvatar
-                  name={organizer.fullName}
+                  name={formatDisplayName(organizer.fullName)}
                   avatarUrl={organizer.avatarUrl}
                   size="sm"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold text-slate-900 truncate">
-                    {organizer.fullName}
+                    {formatDisplayName(organizer.fullName)}
                   </p>
                   <p className="text-[11px] text-slate-500 font-mono-num truncate">
                     @{organizer.handle}
@@ -183,13 +183,13 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
                     className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-100 transition-colors"
                   >
                     <OrganizerAvatar
-                      name={organizer.fullName}
+                      name={formatDisplayName(organizer.fullName)}
                       avatarUrl={organizer.avatarUrl}
                       size="sm"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold text-slate-900 truncate">
-                        {organizer.fullName}
+                        {formatDisplayName(organizer.fullName)}
                       </p>
                       <p className="text-[11px] text-slate-500 font-mono-num truncate">
                         @{organizer.handle}
@@ -240,13 +240,21 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
               </button>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-900 truncate">
-                  {isAuthenticated && organizer
-                    ? `Welcome back, ${organizer.fullName.split(' ')[0]}`
-                    : 'Welcome to WePay'}
+                  {(() => {
+                    if (!isAuthenticated || !organizer) {
+                      return 'Welcome to WePay';
+                    }
+                    const firstName = formatDisplayName(organizer.fullName).split(' ')[0] || '';
+                    if (!firstName) {
+                      return isNewUser ? 'Welcome' : 'Welcome back';
+                    }
+                    return isNewUser
+                      ? `Welcome ${firstName}`
+                      : `Welcome back, ${firstName}`;
+                  })()}
                 </p>
                 <p className="text-xs text-slate-500 hidden sm:block truncate">
                   {formatFullHeaderDate()}
-                  {isMockMode && ' · Prototype Sandbox Mode'}
                 </p>
               </div>
             </div>
@@ -313,12 +321,12 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
                     className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors cursor-pointer"
                   >
                     <OrganizerAvatar
-                      name={organizer.fullName}
+                      name={formatDisplayName(organizer.fullName)}
                       avatarUrl={organizer.avatarUrl}
                       size="xs"
                     />
                     <span className="hidden md:inline text-xs font-medium text-slate-700 max-w-[110px] truncate">
-                      {organizer.fullName}
+                      {formatDisplayName(organizer.fullName)}
                     </span>
                     <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
                   </button>
@@ -327,13 +335,13 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
                   <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-40">
                     <div className="px-3.5 py-2.5 border-b border-slate-100 flex items-center gap-2.5">
                       <OrganizerAvatar
-                        name={organizer.fullName}
+                        name={formatDisplayName(organizer.fullName)}
                         avatarUrl={organizer.avatarUrl}
                         size="sm"
                       />
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-slate-900 truncate">
-                          {organizer.fullName}
+                          {formatDisplayName(organizer.fullName)}
                         </p>
                         <p className="text-xs text-slate-500 truncate">{organizer.email}</p>
                       </div>

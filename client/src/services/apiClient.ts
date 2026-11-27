@@ -2,13 +2,20 @@
  * WePay Backend REST API Client
  */
 
-const RAW_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+const DEFAULT_API_BASE_URL = 'https://wepay-slkv.onrender.com';
+const RAW_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/+$/, '');
 const API_BASE_URL = RAW_BASE_URL.endsWith('/api') ? RAW_BASE_URL.slice(0, -4) : RAW_BASE_URL;
 const TOKEN_KEY = 'wepay_auth_token';
 
-export function isBackendConfigured(): boolean {
-  const useMock = import.meta.env?.VITE_USE_MOCK;
-  return Boolean(API_BASE_URL) && useMock !== 'true';
+function shouldUseSameOriginProxy(): boolean {
+  if (import.meta.env?.DEV) return true;
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return host === 'localhost' || host === '127.0.0.1' || host.endsWith('.run.app');
+}
+
+export function getApiBaseUrl(): string {
+  return shouldUseSameOriginProxy() ? '' : API_BASE_URL;
 }
 
 export function getAuthToken(): string | null {
@@ -51,10 +58,6 @@ export async function apiRequest<T>(
   options: RequestInit = {},
   requiresAuth = false
 ): Promise<T> {
-  if (!API_BASE_URL) {
-    throw new ApiError('Backend API base URL is not configured.', 503);
-  }
-
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...((options.headers as Record<string, string>) || {}),
@@ -68,7 +71,8 @@ export async function apiRequest<T>(
   }
 
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  const response = await fetch(`${API_BASE_URL}${normalizedPath}`, {
+  const baseUrl = getApiBaseUrl();
+  const response = await fetch(`${baseUrl}${normalizedPath}`, {
     ...options,
     headers,
   });

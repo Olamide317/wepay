@@ -30,8 +30,6 @@ export interface Organizer {
   phone: string;
   handle: string;
   avatarUrl?: string;
-  avatarStorage?: 'local_indexeddb' | 'remote' | 'none';
-  avatarUpdatedAt?: string;
   settlementBank?: SettlementBank;
   verified?: boolean;
   createdAt: string;
@@ -40,7 +38,7 @@ export interface Organizer {
 export interface CustomField {
   id: string;
   label: string;
-  /** Supports new dynamic builder types plus legacy 'text' alias for backwards compatibility */
+  /** Supports dynamic builder types plus legacy 'text' alias for backwards compatibility */
   type: CustomFieldType | 'text';
   required: boolean;
   placeholder?: string;
@@ -68,11 +66,11 @@ export interface Collection {
   description: string;
   currency: 'NGN';
   pricingRule: PricingRule;
-  amount: number; // Fixed/suggested/unit price in NGN
-  targetAmount?: number; // For POOL
+  amount: number;
+  targetAmount?: number;
   amountRaised: number;
-  stockLimit?: number; // For INVENTORY
-  stockSold?: number; // For INVENTORY
+  stockLimit?: number;
+  stockSold?: number;
   maxQuantityPerOrder?: number;
   productImageUrl?: string;
   passFeeToPayer: boolean;
@@ -105,7 +103,6 @@ export interface Transaction {
   status: TransactionStatus;
   paidAt?: string;
   createdAt: string;
-  isSimulated?: boolean;
 }
 
 export interface PaymentInitializeRequest {
@@ -121,7 +118,7 @@ export interface PaymentInitializeRequest {
 
 export interface InterswitchCheckoutParams {
   txnRef: string;
-  amount: number; // Minor units (kobo) or NGN as specified by backend contract
+  amount: number;
   amountNaira: number;
   baseAmountNaira: number;
   feeAmountNaira: number;
@@ -129,7 +126,6 @@ export interface InterswitchCheckoutParams {
   payItemId: string;
   currency: '566' | 'NGN';
   receiptCode: string;
-  isSandboxSimulation: boolean;
 }
 
 export interface ReceiptData {
@@ -138,7 +134,6 @@ export interface ReceiptData {
     Collection,
     '_id' | 'slug' | 'title' | 'type' | 'organizerName' | 'organizerHandle' | 'passFeeToPayer'
   >;
-  isSimulated: boolean;
 }
 
 export interface CreateCollectionInput {

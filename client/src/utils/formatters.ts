@@ -95,6 +95,15 @@ export function formatCustomAnswerValue(value: string | string[] | undefined): s
   return String(value);
 }
 
+export function formatDisplayName(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 export function slugify(text: string): string {
   return text
     .toLowerCase()

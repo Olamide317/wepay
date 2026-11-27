@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FolderPlus, Plus, Search, Settings2, Share2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShareCollectionModal } from '../../components/ShareCollectionModal';

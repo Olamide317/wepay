@@ -18,13 +18,11 @@ import { Card } from '../../components/ui/Card';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { AlertBanner, EmptyState, LoadingRows } from '../../components/ui/StateViews';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { useAuth } from '../../context/AuthContext';
 import { wepayService } from '../../services/wepayService';
 import { Collection, CollectionStatus, Transaction } from '../../types/wepay';
 import { formatDate, formatNaira, getShortModeLabel } from '../../utils/formatters';
 
 export const DashboardOverviewPage: React.FC = () => {
-  const { isMockMode } = useAuth();
   const navigate = useNavigate();
 
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -121,13 +119,6 @@ export const DashboardOverviewPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {isMockMode && (
-        <AlertBanner
-          variant="info"
-          message="Prototype Sandbox Mode: Summary metrics and collections shown below are sample demonstration figures persisted locally in your browser. Connect VITE_API_BASE_URL in .env to use live backend data."
-        />
-      )}
-
       {/* Page Heading */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -162,7 +153,7 @@ export const DashboardOverviewPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <Card padding="md">
           <p className="text-xs font-medium text-slate-500">
-            Total Amount Collected {isMockMode && '· Sample'}
+            Total Amount Collected
           </p>
           <p className="text-2xl font-bold font-mono-num text-slate-900 mt-2">
             {loading ? '—' : formatNaira(totalCollected)}
