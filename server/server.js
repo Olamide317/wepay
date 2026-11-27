@@ -2,6 +2,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const { getOrganizerPublicHub } = require('./controllers/profileController');
 
 const app = express();
 
@@ -9,18 +10,16 @@ app.use(cors({ origin: process.env.CLIENT_URL || '*' }));
 app.use(express.json());
 
 app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/profile', require('./routes/profileRoutes'));
 app.use('/api/collections', require('./routes/collectionRoutes'));
+app.use('/api/payments', require('./routes/paymentRoutes'));
+app.get('/api/public/u/:handle', getOrganizerPublicHub);
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', service: 'WePay API' });
 });
 
-// Uncomment each line as teammates push their route files:
-// app.use('/api/auth', require('./routes/authRoutes'));
-// app.use('/api/collections', require('./routes/collectionRoutes'));
-// app.use('/api/payments', require('./routes/paymentRoutes'));
-
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 mongoose
   .connect(process.env.MONGO_URI)
