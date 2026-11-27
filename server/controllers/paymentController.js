@@ -4,22 +4,25 @@ const Collection = require('../models/Collection');
 const Transaction = require('../models/Transaction');
 
 const getIswConfig = () => {
-  const mode = String(process.env.ISW_MODE || 'TEST').trim().toUpperCase();
+  const configuredMode = String(process.env.ISW_MODE || 'TEST').trim().toUpperCase();
+  const qaMode = configuredMode === 'QA';
+  const mode = qaMode ? 'TEST' : configuredMode;
   if (mode !== 'TEST' && mode !== 'LIVE') {
-    const error = new Error('ISW_MODE must be set to TEST or LIVE.');
+    const error = new Error('ISW_MODE must be set to TEST, QA, or LIVE.');
     error.status = 500;
     throw error;
   }
 
   const configuredMerchantCode =
     process.env.ISW_MERCHANT_CODE || process.env.INTERSWITCH_MERCHANT_CODE;
+  const merchantCode = configuredMerchantCode || 'MX6072';
   const configuredPayItemId =
     process.env.ISW_PAY_ITEM_ID || process.env.INTERSWITCH_PAY_ITEM_ID;
   if (
     mode === 'LIVE' &&
     (!configuredMerchantCode ||
       !configuredPayItemId ||
-      configuredMerchantCode === 'MX6072' ||
+      merchantCode === 'MX6072' ||
       configuredPayItemId === '9405967')
   ) {
     const error = new Error(
@@ -31,20 +34,22 @@ const getIswConfig = () => {
 
   return {
     mode,
-    merchantCode: configuredMerchantCode || 'MX6072',
+    merchantCode,
     payItemId: configuredPayItemId || '9405967',
     requeryBaseUrl:
-      process.env.ISW_REQUERY_URL ||
-      (mode === 'LIVE'
-        ? 'https://webpay.interswitchng.com/collections/api/v1/gettransaction'
-        : 'https://sandbox.interswitchng.com/collections/api/v1/gettransaction'),
+      qaMode || merchantCode === 'MX6072'
+        ? 'https://qa.interswitchng.com/collections/api/v1/gettransaction.json'
+        : process.env.ISW_REQUERY_URL ||
+          (mode === 'LIVE'
+            ? 'https://webpay.interswitchng.com/collections/api/v1/gettransaction'
+            : 'https://sandbox.interswitchng.com/collections/api/v1/gettransaction'),
   };
 };
 
 const isVerifiedInterswitchPayment = (response, expectedAmountKobo) =>
   response?.ResponseCode === '00' &&
   Number.isFinite(Number(response.Amount)) &&
-  Number(response.Amount) === expectedAmountKobo;
+  Number(response.Amount) === Number(expectedAmountKobo);
 
 const formatTransactionResponse = (tx, collection) => ({
   _id: tx._id,
@@ -356,6 +361,10 @@ exports.verifyPayment = async (req, res) => {
       if (response.ok) {
         iswData = await response.json();
       } else {
+        const responseBody = await response.text();
+        console.error(
+          `Interswitch requery failed with HTTP ${response.status}: ${responseBody || '(empty response body)'}`
+        );
         verificationError = `Interswitch requery returned HTTP ${response.status}.`;
       }
     } catch (error) {
@@ -422,8 +431,19 @@ exports.handleWebhook = async (req, res) => {
         merchantCode
       )}&transactionreference=${encodeURIComponent(tx.txnRef)}&amount=${amountKobo}`;
 
-      const response = await fetch(url, { method: 'GET' });
-      const iswData = response.ok ? await response.json() : null;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      let iswData = null;
+      if (response.ok) {
+        iswData = await response.json();
+      } else {
+        const responseBody = await response.text();
+        console.error(
+          `Interswitch webhook requery failed with HTTP ${response.status}: ${responseBody || '(empty response body)'}`
+        );
+      }
 
       if (isVerifiedInterswitchPayment(iswData, amountKobo)) {
         const ref =
