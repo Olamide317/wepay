@@ -762,6 +762,20 @@ export const wepayService = {
     receiptCode: string,
     outcome: 'SUCCESS' | 'FAILED' | 'PENDING'
   ): Promise<ReceiptData> {
+    if (isBackendConfigured()) {
+      const existing = await this.getReceipt(receiptCode);
+      if (outcome !== 'PENDING') {
+        await apiRequest('/api/payments/verify', {
+          method: 'POST',
+          body: JSON.stringify({
+            txnRef: existing.transaction.txnRef,
+            simulateQaSuccess: outcome === 'SUCCESS',
+          }),
+        });
+      }
+      return this.getReceipt(receiptCode);
+    }
+
     await delay(850);
     const store = loadSandboxStore();
     const txIdx = store.transactions.findIndex((t) => t.receiptCode === receiptCode);
