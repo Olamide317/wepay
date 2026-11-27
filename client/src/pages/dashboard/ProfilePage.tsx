@@ -50,8 +50,11 @@ export const ProfilePage: React.FC = () => {
       setSaveError('Enter a valid 10-digit NUBAN bank account number.');
       return;
     }
-    if (!accountName.trim() || accountName.trim().length < 3) {
-      setSaveError('Enter the account holder name.');
+    if (
+      accountName.trim().length < 3 ||
+      !/^[\p{L} ]+$/u.test(accountName.trim())
+    ) {
+      setSaveError('Enter an account holder name using letters only.');
       return;
     }
 
@@ -162,7 +165,7 @@ export const ProfilePage: React.FC = () => {
             </Select>
 
             <Input
-              label="Account Number (NUBAN)"
+              label="Account Number"
               maxLength={10}
               inputMode="numeric"
               placeholder="Enter 10-digit account number"
@@ -175,7 +178,7 @@ export const ProfilePage: React.FC = () => {
               label="Account Name"
               placeholder="Enter account holder name"
               value={accountName}
-              onChange={(e) => setAccountName(e.target.value)}
+              onChange={(e) => setAccountName(e.target.value.replace(/[^\p{L} ]/gu, ''))}
               required
             />
 
