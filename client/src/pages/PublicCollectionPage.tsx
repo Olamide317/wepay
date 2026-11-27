@@ -34,6 +34,7 @@ import {
   isValidNigerianPhone,
   isValidPhoneInput,
   normalizeFieldType,
+  suggestEmailCorrection,
 } from '../utils/formatters';
 
 interface FormErrors {
@@ -58,6 +59,7 @@ export const PublicCollectionPage: React.FC = () => {
   // Contributor form state
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const emailCorrection = suggestEmailCorrection(email);
   const [phone, setPhone] = useState('');
   const [customAmount, setCustomAmount] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -646,16 +648,27 @@ export const PublicCollectionPage: React.FC = () => {
                 />
 
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Email address"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    placeholder="you@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    error={errors.email}
-                  />
+                  <div>
+                    <Input
+                      label="Email address"
+                      type="email"
+                      required
+                      autoComplete="email"
+                      placeholder="you@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      error={errors.email}
+                    />
+                    {emailCorrection && (
+                      <button
+                        type="button"
+                        className="mt-1.5 text-xs font-medium text-indigo-600 underline hover:text-indigo-700"
+                        onClick={() => setEmail(emailCorrection)}
+                      >
+                        Did you mean {emailCorrection}?
+                      </button>
+                    )}
+                  </div>
                   <Input
                     label="Phone number"
                     type="tel"

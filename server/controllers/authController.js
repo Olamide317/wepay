@@ -1,6 +1,8 @@
 ﻿const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { sendWelcomeEmail } = require("../services/emailService");
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const signToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
@@ -51,6 +53,11 @@ exports.register = async (req, res) => {
         .status(400)
         .json({ message: "Full name, email, and password are required" });
     }
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      return res.status(400).json({
+        message: "Please enter a valid email address (e.g. name@example.com).",
+      });
+    }
 
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
@@ -71,6 +78,10 @@ exports.register = async (req, res) => {
       handle: uniqueHandle,
       passwordHash,
     });
+
+    void Promise.resolve()
+      .then(() => sendWelcomeEmail({ name: user.fullName, email: user.email }))
+      .catch((error) => console.error("[Brevo Welcome Error]:", error.message));
 
     const token = signToken(user._id);
     return res

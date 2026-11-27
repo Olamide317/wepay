@@ -8,7 +8,13 @@ import { Card } from '../components/ui/Card';
 import { Checkbox, Input } from '../components/ui/FormControls';
 import { AlertBanner } from '../components/ui/StateViews';
 import { useAuth } from '../context/AuthContext';
-import { formatDisplayName, isValidEmail, isValidNigerianPhone, slugify } from '../utils/formatters';
+import {
+  formatDisplayName,
+  isValidEmail,
+  isValidNigerianPhone,
+  slugify,
+  suggestEmailCorrection,
+} from '../utils/formatters';
 import fundingImage from '../assets/images/funding.jpg';
 
 interface RegisterErrors {
@@ -38,6 +44,7 @@ export const RegisterPage: React.FC = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
+  const emailCorrection = suggestEmailCorrection(email);
 
   const validate = () => {
     const next: RegisterErrors = {};
@@ -131,16 +138,27 @@ export const RegisterPage: React.FC = () => {
             />
 
             <div className="grid sm:grid-cols-2 gap-4">
-              <Input
-                label="Email address"
-                type="email"
-                required
-                autoComplete="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                error={errors.email}
-              />
+              <div>
+                <Input
+                  label="Email address"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  error={errors.email}
+                />
+                {emailCorrection && (
+                  <button
+                    type="button"
+                    className="mt-1.5 text-xs font-medium text-indigo-600 underline hover:text-indigo-700"
+                    onClick={() => setEmail(emailCorrection)}
+                  >
+                    Did you mean {emailCorrection}?
+                  </button>
+                )}
+              </div>
               <Input
                 label="Phone number"
                 type="tel"
