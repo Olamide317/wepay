@@ -1,14 +1,55 @@
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const Collection = require('../models/Collection');
 const Transaction = require('../models/Transaction');
 
-const getIswConfig = () => ({
-  merchantCode: process.env.ISW_MERCHANT_CODE || process.env.INTERSWITCH_MERCHANT_CODE || 'MX6072',
-  payItemId: process.env.ISW_PAY_ITEM_ID || process.env.INTERSWITCH_PAY_ITEM_ID || '9405967',
-  requeryBaseUrl:
-    process.env.ISW_REQUERY_URL ||
-    'https://qa.interswitchng.com/collections/api/v1/gettransaction.json',
-});
+const getIswConfig = () => {
+  const configuredMode = String(process.env.ISW_MODE || 'TEST').trim().toUpperCase();
+  const qaMode = configuredMode === 'QA';
+  const mode = qaMode ? 'TEST' : configuredMode;
+  if (mode !== 'TEST' && mode !== 'LIVE') {
+    const error = new Error('ISW_MODE must be set to TEST, QA, or LIVE.');
+    error.status = 500;
+    throw error;
+  }
+
+  const configuredMerchantCode =
+    process.env.ISW_MERCHANT_CODE || process.env.INTERSWITCH_MERCHANT_CODE;
+  const merchantCode = configuredMerchantCode || 'MX6072';
+  const configuredPayItemId =
+    process.env.ISW_PAY_ITEM_ID || process.env.INTERSWITCH_PAY_ITEM_ID;
+  if (
+    mode === 'LIVE' &&
+    (!configuredMerchantCode ||
+      !configuredPayItemId ||
+      merchantCode === 'MX6072' ||
+      configuredPayItemId === '9405967')
+  ) {
+    const error = new Error(
+      'Live IPG requires your production ISW_MERCHANT_CODE and ISW_PAY_ITEM_ID from Interswitch.'
+    );
+    error.status = 503;
+    throw error;
+  }
+
+  return {
+    mode,
+    merchantCode,
+    payItemId: configuredPayItemId || '9405967',
+    requeryBaseUrl:
+      qaMode || merchantCode === 'MX6072'
+        ? 'https://qa.interswitchng.com/collections/api/v1/gettransaction.json'
+        : process.env.ISW_REQUERY_URL ||
+          (mode === 'LIVE'
+            ? 'https://webpay.interswitchng.com/collections/api/v1/gettransaction'
+            : 'https://sandbox.interswitchng.com/collections/api/v1/gettransaction'),
+  };
+};
+
+const isVerifiedInterswitchPayment = (response, expectedAmountKobo) =>
+  response?.ResponseCode === '00' &&
+  Number.isFinite(Number(response.Amount)) &&
+  Number(response.Amount) === Number(expectedAmountKobo);
 
 const formatTransactionResponse = (tx, collection) => ({
   _id: tx._id,
@@ -36,97 +77,134 @@ const formatTransactionResponse = (tx, collection) => ({
 });
 
 const settleTransactionSuccess = async (tx, interswitchRef) => {
-  if (tx.status === 'SUCCESS') {
-    return tx;
-  }
+  const session = await mongoose.startSession();
+  let settledTransaction = tx;
+  let transactionFailed = false;
 
-  const collection = await Collection.findById(tx.collectionId);
-  if (!collection) {
-    return tx;
-  }
+  try {
+    await session.withTransaction(async () => {
+      const currentTx = await Transaction.findOne({ txnRef: tx.txnRef }).session(session);
+      if (!currentTx || currentTx.status === 'SUCCESS' || currentTx.status === 'FAILED') {
+        settledTransaction = currentTx || tx;
+        return;
+      }
 
-  const qty = Math.max(1, Number(tx.quantity) || 1);
-  let updatedCol = null;
+      const collection = await Collection.findById(currentTx.collectionId).session(session);
+      if (!collection) {
+        settledTransaction = currentTx;
+        return;
+      }
 
-  if (collection.type === 'INVENTORY' && collection.stockLimit && collection.stockLimit > 0) {
-    updatedCol = await Collection.findOneAndUpdate(
-      {
-        _id: collection._id,
-        $expr: {
-          $lte: [{ $add: [{ $ifNull: ['$stockSold', 0] }, qty] }, '$stockLimit'],
-        },
-      },
-      {
-        $inc: {
-          totalCollected: tx.baseAmount,
-          amountRaised: tx.baseAmount,
-          stockSold: qty,
-          contributorCount: 1,
-        },
-      },
-      { new: true }
-    );
+      const qty = Math.max(1, Number(currentTx.quantity) || 1);
+      let updatedCol = null;
 
-    if (!updatedCol) {
-      tx.status = 'FAILED';
-      await tx.save();
-      return tx;
+      if (collection.type === 'INVENTORY' && collection.stockLimit && collection.stockLimit > 0) {
+        updatedCol = await Collection.findOneAndUpdate(
+          {
+            _id: collection._id,
+            $expr: {
+              $lte: [{ $add: [{ $ifNull: ['$stockSold', 0] }, qty] }, '$stockLimit'],
+            },
+          },
+          {
+            $inc: {
+              totalCollected: currentTx.baseAmount,
+              amountRaised: currentTx.baseAmount,
+              stockSold: qty,
+              contributorCount: 1,
+            },
+          },
+          { new: true, session }
+        );
+
+        if (!updatedCol) {
+          currentTx.status = 'FAILED';
+          await currentTx.save({ session });
+          settledTransaction = currentTx;
+          return;
+        }
+
+        if ((updatedCol.stockSold || 0) >= updatedCol.stockLimit && updatedCol.status === 'ACTIVE') {
+          updatedCol.status = 'COMPLETED';
+          await updatedCol.save({ session });
+        }
+      } else {
+        updatedCol = await Collection.findByIdAndUpdate(
+          collection._id,
+          {
+            $inc: {
+              totalCollected: currentTx.baseAmount,
+              amountRaised: currentTx.baseAmount,
+              contributorCount: 1,
+            },
+          },
+          { new: true, session }
+        );
+
+        const target = updatedCol?.targetAmount || updatedCol?.totalTarget || 0;
+        const raised = updatedCol?.amountRaised || updatedCol?.totalCollected || 0;
+        if (
+          updatedCol &&
+          updatedCol.type === 'POOL' &&
+          target > 0 &&
+          raised >= target &&
+          updatedCol.status === 'ACTIVE'
+        ) {
+          updatedCol.status = 'COMPLETED';
+          await updatedCol.save({ session });
+        }
+      }
+
+      const now = new Date();
+      const secret = process.env.JWT_SECRET || 'wepay_receipt_secret';
+      currentTx.status = 'SUCCESS';
+      currentTx.interswitchRef = interswitchRef || `ISW-${Date.now()}`;
+      currentTx.receiptHash = crypto
+        .createHash('sha256')
+        .update(`${currentTx.txnRef}:${currentTx.receiptCode}:${currentTx.totalPaid}:${secret}`)
+        .digest('hex')
+        .slice(0, 24);
+      currentTx.paidAt = now;
+      currentTx.verifiedAt = now;
+      await currentTx.save({ session });
+
+      if (updatedCol && Array.isArray(updatedCol.expectedPayers) && updatedCol.expectedPayers.length > 0) {
+        const targetName = currentTx.contributorName.toLowerCase().trim();
+        const payerEntry = updatedCol.expectedPayers.find(
+          (payer) => payer.status === 'PENDING' && payer.name.toLowerCase().trim() === targetName
+        );
+        if (payerEntry) {
+          payerEntry.status = 'PAID';
+          payerEntry.paidAt = now;
+          payerEntry.txnRef = currentTx.txnRef;
+          await updatedCol.save({ session });
+        }
+      }
+
+      settledTransaction = currentTx;
+    });
+
+    return settledTransaction;
+  } catch (error) {
+    transactionFailed = true;
+    try {
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
+    } catch (abortError) {
+      console.error('Failed to abort payment settlement transaction:', abortError);
     }
-
-    if ((updatedCol.stockSold || 0) >= updatedCol.stockLimit && updatedCol.status === 'ACTIVE') {
-      updatedCol.status = 'COMPLETED';
-      await updatedCol.save();
-    }
-  } else {
-    updatedCol = await Collection.findByIdAndUpdate(
-      collection._id,
-      {
-        $inc: {
-          totalCollected: tx.baseAmount,
-          amountRaised: tx.baseAmount,
-          contributorCount: 1,
-        },
-      },
-      { new: true }
-    );
-
-    const target = updatedCol?.targetAmount || updatedCol?.totalTarget || 0;
-    const raised = updatedCol?.amountRaised || updatedCol?.totalCollected || 0;
-    if (updatedCol && updatedCol.type === 'POOL' && target > 0 && raised >= target && updatedCol.status === 'ACTIVE') {
-      updatedCol.status = 'COMPLETED';
-      await updatedCol.save();
+    throw error;
+  } finally {
+    try {
+      await session.endSession();
+    } catch (endError) {
+      if (!transactionFailed) {
+        throw endError;
+      }
+      console.error('Failed to end payment settlement session after transaction failure:', endError);
     }
   }
-
-  const now = new Date();
-  const secret = process.env.JWT_SECRET || 'wepay_receipt_secret';
-  const receiptHash = crypto
-    .createHash('sha256')
-    .update(`${tx.txnRef}:${tx.receiptCode}:${tx.totalPaid}:${secret}`)
-    .digest('hex')
-    .slice(0, 24);
-
-  tx.status = 'SUCCESS';
-  tx.interswitchRef = interswitchRef || `ISW-${Date.now()}`;
-  tx.receiptHash = receiptHash;
-  tx.paidAt = now;
-  tx.verifiedAt = now;
-  await tx.save();
-
-  if (updatedCol && Array.isArray(updatedCol.expectedPayers) && updatedCol.expectedPayers.length > 0) {
-    const targetName = tx.contributorName.toLowerCase().trim();
-    const payerEntry = updatedCol.expectedPayers.find(
-      (p) => p.status === 'PENDING' && p.name.toLowerCase().trim() === targetName
-    );
-    if (payerEntry) {
-      payerEntry.status = 'PAID';
-      payerEntry.paidAt = now;
-      payerEntry.txnRef = tx.txnRef;
-      await updatedCol.save();
-    }
-  }
-
-  return tx;
 };
 
 exports.initializePayment = async (req, res) => {
@@ -193,6 +271,7 @@ exports.initializePayment = async (req, res) => {
     const standardFee = Math.min(Math.round(baseAmount * 0.015) + 50, 2000);
     const feeAmount = passFeeToPayer ? standardFee : 0;
     const totalPaid = baseAmount + feeAmount;
+    const { merchantCode, payItemId, mode } = getIswConfig();
 
     const txnRef = `WP-${Date.now()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
     const receiptCode = `RCP-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
@@ -216,16 +295,15 @@ exports.initializePayment = async (req, res) => {
       status: 'PENDING',
     });
 
-    const { merchantCode, payItemId } = getIswConfig();
-
     const checkoutParams = {
       txnRef,
-      amount: totalPaid * 100,
+      amount: Math.round(totalPaid * 100),
       amountNaira: totalPaid,
       baseAmountNaira: baseAmount,
       feeAmountNaira: feeAmount,
       merchantCode,
       payItemId,
+      mode,
       currency: '566',
       receiptCode,
       isSandboxSimulation: false,
@@ -236,6 +314,9 @@ exports.initializePayment = async (req, res) => {
       transaction: formatTransactionResponse(tx, collection),
     });
   } catch (error) {
+    if (error.status === 503) {
+      return res.status(503).json({ message: error.message });
+    }
     return res.status(500).json({ message: 'Failed to initialize payment', error: error.message });
   }
 };
@@ -247,7 +328,7 @@ exports.verifyPayment = async (req, res) => {
       return res.status(400).json({ message: 'Transaction reference (txnRef) is required' });
     }
 
-    const tx = await Transaction.findOne({ txnRef: String(txnRef).trim() });
+    let tx = await Transaction.findOne({ txnRef: String(txnRef).trim() });
     if (!tx) {
       return res.status(404).json({ message: 'Transaction not found' });
     }
@@ -265,12 +346,13 @@ exports.verifyPayment = async (req, res) => {
     }
 
     const { merchantCode, requeryBaseUrl } = getIswConfig();
-    const amountKobo = tx.totalPaid * 100;
+    const amountKobo = Math.round(tx.totalPaid * 100);
     const url = `${requeryBaseUrl}?merchantcode=${encodeURIComponent(
       merchantCode
     )}&transactionreference=${encodeURIComponent(tx.txnRef)}&amount=${amountKobo}`;
 
     let iswData = null;
+    let verificationError;
     try {
       const response = await fetch(url, {
         method: 'GET',
@@ -278,27 +360,46 @@ exports.verifyPayment = async (req, res) => {
       });
       if (response.ok) {
         iswData = await response.json();
+      } else {
+        const responseBody = await response.text();
+        console.error(
+          `Interswitch requery failed with HTTP ${response.status}: ${responseBody || '(empty response body)'}`
+        );
+        verificationError = `Interswitch requery returned HTTP ${response.status}.`;
       }
-    } catch {
-      iswData = null;
+    } catch (error) {
+      console.error('Interswitch payment requery failed:', error);
+      verificationError = 'Unable to reach Interswitch to verify the payment. Please retry.';
     }
 
-    const isExplicitFail = req.body.outcome === 'FAILED';
-    const allowQaFallback = process.env.ALLOW_QA_VERIFY !== 'false';
-    const isApproved = !isExplicitFail && (iswData?.ResponseCode === '00' || req.body.simulateQaSuccess === true || allowQaFallback);
+    const isApproved = isVerifiedInterswitchPayment(iswData, amountKobo);
+    if (
+      iswData?.ResponseCode === '00' &&
+      !(
+        Number.isFinite(Number(iswData.Amount)) &&
+        Number(iswData.Amount) === amountKobo
+      )
+    ) {
+      verificationError =
+        'Interswitch approved the transaction but returned an amount that does not match the expected amount.';
+    }
 
     if (isApproved) {
       const ref =
         iswData?.PaymentReference || iswData?.RetrievalReferenceNumber || `ISW-QA-${Date.now()}`;
-      await settleTransactionSuccess(tx, ref);
+      tx = await settleTransactionSuccess(tx, ref);
     } else if (iswData && iswData.ResponseCode && iswData.ResponseCode !== '09') {
-      tx.status = 'FAILED';
-      await tx.save();
+      await Transaction.updateOne(
+        { _id: tx._id, status: 'PENDING' },
+        { $set: { status: 'FAILED' } }
+      );
+      tx = (await Transaction.findById(tx._id)) || tx;
     }
 
     return res.status(200).json({
       transaction: formatTransactionResponse(tx, collection),
       interswitchResponse: iswData,
+      verificationError,
     });
   } catch (error) {
     return res.status(500).json({ message: 'Payment verification failed', error: error.message });
@@ -318,31 +419,77 @@ exports.handleWebhook = async (req, res) => {
       return res.status(400).json({ message: 'Missing transaction reference in webhook payload' });
     }
 
-    const tx = await Transaction.findOne({ txnRef: String(txnRef).trim() });
+    let tx = await Transaction.findOne({ txnRef: String(txnRef).trim() });
     if (!tx) {
       return res.status(404).json({ message: 'Transaction not found' });
     }
 
     if (tx.status !== 'SUCCESS') {
       const { merchantCode, requeryBaseUrl } = getIswConfig();
-      const amountKobo = tx.totalPaid * 100;
+      const amountKobo = Math.round(tx.totalPaid * 100);
       const url = `${requeryBaseUrl}?merchantcode=${encodeURIComponent(
         merchantCode
       )}&transactionreference=${encodeURIComponent(tx.txnRef)}&amount=${amountKobo}`;
 
-      const response = await fetch(url, { method: 'GET' });
-      const iswData = response.ok ? await response.json() : null;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      let iswData = null;
+      if (response.ok) {
+        iswData = await response.json();
+      } else {
+        const responseBody = await response.text();
+        console.error(
+          `Interswitch webhook requery failed with HTTP ${response.status}: ${responseBody || '(empty response body)'}`
+        );
+      }
 
-      if (iswData?.ResponseCode === '00') {
+      if (isVerifiedInterswitchPayment(iswData, amountKobo)) {
         const ref =
           iswData.PaymentReference || iswData.RetrievalReferenceNumber || `ISW-WH-${Date.now()}`;
-        await settleTransactionSuccess(tx, ref);
+        tx = await settleTransactionSuccess(tx, ref);
       }
     }
 
     return res.status(200).json({ received: true, status: tx.status });
   } catch (error) {
     return res.status(500).json({ message: 'Webhook processing error', error: error.message });
+  }
+};
+
+exports.handleCheckoutRedirectReturn = async (req, res) => {
+  try {
+    const txnRef =
+      req.body?.txnref ||
+      req.body?.txnRef ||
+      req.body?.transactionreference ||
+      req.query?.txnref ||
+      req.query?.txnRef ||
+      req.query?.transactionreference;
+    if (!txnRef) {
+      return res.status(400).send('Missing Interswitch transaction reference.');
+    }
+
+    const transaction = await Transaction.findOne({ txnRef: String(txnRef).trim() });
+    if (!transaction) {
+      return res.status(404).send('Transaction not found.');
+    }
+
+    const collection = await Collection.findById(transaction.collectionId).select('slug');
+    if (!collection) {
+      return res.status(404).send('Collection not found.');
+    }
+
+    const configuredClientUrl =
+      process.env.CLIENT_URL || 'https://wepay-peach.vercel.app';
+    const clientOrigin = configuredClientUrl.split(',')[0].trim().replace(/\/+$/, '');
+    const redirectUrl = new URL(`/c/${encodeURIComponent(collection.slug)}`, clientOrigin);
+    redirectUrl.searchParams.set('txnref', transaction.txnRef);
+    return res.redirect(303, redirectUrl.toString());
+  } catch (error) {
+    console.error('Interswitch redirect handling failed:', error.message);
+    return res.status(500).send('Unable to return to the WePay checkout page.');
   }
 };
 

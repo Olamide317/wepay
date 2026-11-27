@@ -6,6 +6,7 @@ const DEFAULT_API_BASE_URL = 'https://wepay-slkv.onrender.com';
 const RAW_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/+$/, '');
 const API_BASE_URL = RAW_BASE_URL.endsWith('/api') ? RAW_BASE_URL.slice(0, -4) : RAW_BASE_URL;
 const TOKEN_KEY = 'wepay_auth_token';
+const USE_MOCK = import.meta.env?.VITE_USE_MOCK === 'true';
 
 function shouldUseSameOriginProxy(): boolean {
   if (import.meta.env?.DEV) return true;
@@ -16,6 +17,10 @@ function shouldUseSameOriginProxy(): boolean {
 
 export function getApiBaseUrl(): string {
   return shouldUseSameOriginProxy() ? '' : API_BASE_URL;
+}
+
+export function isBackendConfigured(): boolean {
+  return Boolean(API_BASE_URL) && !USE_MOCK;
 }
 
 export function getAuthToken(): string | null {

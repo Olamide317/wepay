@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { WePayLogo } from '../components/WePayLogo';
@@ -36,6 +36,7 @@ export const RegisterPage: React.FC = () => {
   const [errors, setErrors] = useState<RegisterErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
   const validate = () => {
     const next: RegisterErrors = {};
@@ -67,9 +68,11 @@ export const RegisterPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     setSubmitError(null);
     if (!validate()) return;
 
+    submittingRef.current = true;
     setLoading(true);
     try {
       await register({
@@ -85,6 +88,7 @@ export const RegisterPage: React.FC = () => {
         err instanceof Error ? err.message : 'Unable to create account. Please try again.'
       );
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
@@ -204,7 +208,7 @@ export const RegisterPage: React.FC = () => {
               />
             </div>
 
-            <Button type="submit" fullWidth size="lg" loading={loading}>
+            <Button type="submit" fullWidth size="lg" loading={loading} disabled={loading}>
               {loading ? 'Creating account...' : 'Create Account'}
             </Button>
           </form>

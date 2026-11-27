@@ -30,6 +30,8 @@ export interface Organizer {
   phone: string;
   handle: string;
   avatarUrl?: string;
+  avatarStorage?: 'none' | 'remote' | 'local_indexeddb';
+  avatarUpdatedAt?: string;
   settlementBank?: SettlementBank;
   verified?: boolean;
   createdAt: string;
@@ -103,6 +105,7 @@ export interface Transaction {
   status: TransactionStatus;
   paidAt?: string;
   createdAt: string;
+  isSimulated?: boolean;
 }
 
 export interface PaymentInitializeRequest {
@@ -124,8 +127,10 @@ export interface InterswitchCheckoutParams {
   feeAmountNaira: number;
   merchantCode: string;
   payItemId: string;
+  mode: 'TEST' | 'LIVE';
   currency: '566' | 'NGN';
   receiptCode: string;
+  isSandboxSimulation: boolean;
 }
 
 export interface ReceiptData {
@@ -134,6 +139,7 @@ export interface ReceiptData {
     Collection,
     '_id' | 'slug' | 'title' | 'type' | 'organizerName' | 'organizerHandle' | 'passFeeToPayer'
   >;
+  isSimulated: boolean;
 }
 
 export interface CreateCollectionInput {
