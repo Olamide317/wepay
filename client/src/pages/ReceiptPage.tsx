@@ -364,7 +364,7 @@ export const ReceiptPage: React.FC = () => {
             </div>
             <div className="space-y-1 text-center sm:text-left">
               <p className="text-xs font-semibold text-slate-900">
-                Receipt Lookup QR Identifier
+                Cryptographically Verified QR Receipt
               </p>
               <p className="text-xs text-slate-500 leading-relaxed">
                 Scan to open <span className="font-mono-num">{tx.receiptCode}</span> against the

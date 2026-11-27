@@ -6,9 +6,11 @@ const {
   getCollectionBySlug,
   getCollectionLedger,
   updateCollectionStatus,
+  generateAiCollectionDraft,
 } = require('../controllers/collectionController');
 const { protect } = require('../middleware/authMiddleware');
 
+router.post('/ai-draft', protect, generateAiCollectionDraft);
 router.post('/', protect, createCollection);
 router.get('/', protect, getMyCollections);
 router.get('/:id/ledger', protect, getCollectionLedger);

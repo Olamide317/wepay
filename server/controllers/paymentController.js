@@ -1,4 +1,4 @@
-﻿const crypto = require('crypto');
+const crypto = require('crypto');
 const Collection = require('../models/Collection');
 const Transaction = require('../models/Transaction');
 
@@ -15,7 +15,7 @@ const formatTransactionResponse = (tx, collection) => ({
   collectionId: collection?._id || tx.collectionId,
   collectionTitle: collection?.title || 'WePay Collection',
   collectionSlug: collection?.slug || '',
-  collectionType: collection?.mode === 'SPLIT' ? 'POOL' : 'OPEN',
+  collectionType: collection?.type || (collection?.mode === 'SPLIT' ? 'POOL' : 'OPEN'),
   txnRef: tx.txnRef,
   contributorName: tx.contributorName,
   contributorEmail: tx.contributorEmail,
@@ -40,6 +40,64 @@ const settleTransactionSuccess = async (tx, interswitchRef) => {
     return tx;
   }
 
+  const collection = await Collection.findById(tx.collectionId);
+  if (!collection) {
+    return tx;
+  }
+
+  const qty = Math.max(1, Number(tx.quantity) || 1);
+  let updatedCol = null;
+
+  if (collection.type === 'INVENTORY' && collection.stockLimit && collection.stockLimit > 0) {
+    updatedCol = await Collection.findOneAndUpdate(
+      {
+        _id: collection._id,
+        $expr: {
+          $lte: [{ $add: [{ $ifNull: ['$stockSold', 0] }, qty] }, '$stockLimit'],
+        },
+      },
+      {
+        $inc: {
+          totalCollected: tx.baseAmount,
+          amountRaised: tx.baseAmount,
+          stockSold: qty,
+          contributorCount: 1,
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedCol) {
+      tx.status = 'FAILED';
+      await tx.save();
+      return tx;
+    }
+
+    if ((updatedCol.stockSold || 0) >= updatedCol.stockLimit && updatedCol.status === 'ACTIVE') {
+      updatedCol.status = 'COMPLETED';
+      await updatedCol.save();
+    }
+  } else {
+    updatedCol = await Collection.findByIdAndUpdate(
+      collection._id,
+      {
+        $inc: {
+          totalCollected: tx.baseAmount,
+          amountRaised: tx.baseAmount,
+          contributorCount: 1,
+        },
+      },
+      { new: true }
+    );
+
+    const target = updatedCol?.targetAmount || updatedCol?.totalTarget || 0;
+    const raised = updatedCol?.amountRaised || updatedCol?.totalCollected || 0;
+    if (updatedCol && updatedCol.type === 'POOL' && target > 0 && raised >= target && updatedCol.status === 'ACTIVE') {
+      updatedCol.status = 'COMPLETED';
+      await updatedCol.save();
+    }
+  }
+
   const now = new Date();
   const secret = process.env.JWT_SECRET || 'wepay_receipt_secret';
   const receiptHash = crypto
@@ -55,22 +113,16 @@ const settleTransactionSuccess = async (tx, interswitchRef) => {
   tx.verifiedAt = now;
   await tx.save();
 
-  const collection = await Collection.findByIdAndUpdate(
-    tx.collectionId,
-    { $inc: { totalCollected: tx.baseAmount } },
-    { new: true }
-  );
-
-  if (collection && Array.isArray(collection.expectedPayers) && collection.expectedPayers.length > 0) {
+  if (updatedCol && Array.isArray(updatedCol.expectedPayers) && updatedCol.expectedPayers.length > 0) {
     const targetName = tx.contributorName.toLowerCase().trim();
-    const payerEntry = collection.expectedPayers.find(
+    const payerEntry = updatedCol.expectedPayers.find(
       (p) => p.status === 'PENDING' && p.name.toLowerCase().trim() === targetName
     );
     if (payerEntry) {
       payerEntry.status = 'PAID';
       payerEntry.paidAt = now;
       payerEntry.txnRef = tx.txnRef;
-      await collection.save();
+      await updatedCol.save();
     }
   }
 
@@ -104,23 +156,42 @@ exports.initializePayment = async (req, res) => {
     }
 
     if (collection.status !== 'ACTIVE') {
-      return res.status(400).json({ message: 'This collection is closed and no longer accepting payments' });
+      return res.status(400).json({
+        message: `This collection is currently ${collection.status.toLowerCase()} and no longer accepting payments`,
+      });
     }
 
-    const qty = Math.max(1, Number(quantity) || 1);
+    const qty = collection.type === 'INVENTORY' ? Math.max(1, Number(quantity) || 1) : 1;
+
+    if (collection.type === 'INVENTORY' && collection.stockLimit && collection.stockLimit > 0) {
+      const remaining = Math.max(0, collection.stockLimit - (collection.stockSold || 0));
+      if (remaining < qty) {
+        return res.status(400).json({
+          message:
+            remaining === 0
+              ? 'This item is sold out.'
+              : `Only ${remaining} unit(s) remaining in stock.`,
+        });
+      }
+    }
+
+    const unitOrBase = Number(collection.amount || collection.perPersonAmount || collection.totalTarget || 0);
     const requestedAmount = Number(amount) || 0;
     const baseAmount =
-      requestedAmount > 0
+      collection.type === 'INVENTORY'
+        ? unitOrBase * qty
+        : requestedAmount > 0
         ? requestedAmount
-        : collection.perPersonAmount > 0
-        ? collection.perPersonAmount * qty
-        : collection.totalTarget;
+        : unitOrBase;
 
     if (!baseAmount || baseAmount < 100) {
       return res.status(400).json({ message: 'Payment amount must be at least ₦100' });
     }
 
-    const feeAmount = Math.min(Math.round(baseAmount * 0.015) + 50, 2000);
+    const passFeeToPayer =
+      collection.passFeeToPayer !== undefined ? Boolean(collection.passFeeToPayer) : true;
+    const standardFee = Math.min(Math.round(baseAmount * 0.015) + 50, 2000);
+    const feeAmount = passFeeToPayer ? standardFee : 0;
     const totalPaid = baseAmount + feeAmount;
 
     const txnRef = `WP-${Date.now()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
@@ -149,7 +220,7 @@ exports.initializePayment = async (req, res) => {
 
     const checkoutParams = {
       txnRef,
-      amount: totalPaid * 100, // kobo for Interswitch Web Checkout
+      amount: totalPaid * 100,
       amountNaira: totalPaid,
       baseAmountNaira: baseAmount,
       feeAmountNaira: feeAmount,
@@ -301,10 +372,10 @@ exports.getReceipt = async (req, res) => {
             _id: collection._id,
             slug: collection.slug,
             title: collection.title,
-            type: collection.mode === 'SPLIT' ? 'POOL' : 'OPEN',
+            type: collection.type || (collection.mode === 'SPLIT' ? 'POOL' : 'OPEN'),
             organizerName: collection.organizer?.fullName || 'Organizer',
             organizerHandle: collection.organizer?.handle || 'organizer',
-            passFeeToPayer: true,
+            passFeeToPayer: collection.passFeeToPayer !== undefined ? collection.passFeeToPayer : true,
           }
         : {
             _id: tx.collectionId,

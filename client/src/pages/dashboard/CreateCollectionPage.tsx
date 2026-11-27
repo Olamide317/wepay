@@ -7,7 +7,9 @@ import {
   Layers,
   Package,
   Share2,
+  Sparkles,
   Users,
+  Wand2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ContributorFieldsBuilder } from '../../components/FormBuilder/ContributorFieldsBuilder';
@@ -28,7 +30,17 @@ interface FormErrors {
   stockLimit?: string;
 }
 
+const AI_PRESET_PROMPTS = [
+  'Split ₦75,000 Starlink bill among 5 roommates',
+  'Pre-order 30 snack boxes at ₦2,500 asking for Hostel & Room',
+  'NACOS 300L departmental dues of ₦3,000 asking for Matric Number',
+];
+
 export const CreateCollectionPage: React.FC = () => {
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiNotice, setAiNotice] = useState<string | null>(null);
+
   const [type, setType] = useState<CollectionType>('POOL');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -48,6 +60,38 @@ export const CreateCollectionPage: React.FC = () => {
   const [createdCollection, setCreatedCollection] = useState<Collection | null>(null);
   const [copied, setCopied] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+
+  const handleGenerateWithAi = async (promptOverride?: string) => {
+    const query = (promptOverride ?? aiPrompt).trim();
+    if (!query) return;
+    if (promptOverride) setAiPrompt(promptOverride);
+
+    setAiGenerating(true);
+    setAiNotice(null);
+    setSubmitError(null);
+    try {
+      const { draft } = await wepayService.generateAiCollectionDraft(query);
+      if (draft.type) setType(draft.type);
+      if (draft.title) setTitle(draft.title);
+      if (draft.description) setDescription(draft.description);
+      if (draft.pricingRule) setPricingRule(draft.pricingRule);
+      if (draft.amount !== undefined) setAmount(draft.amount > 0 ? String(draft.amount) : '');
+      setTargetAmount(draft.targetAmount ? String(draft.targetAmount) : '');
+      setStockLimit(draft.stockLimit ? String(draft.stockLimit) : '');
+      if (draft.passFeeToPayer !== undefined) setPassFeeToPayer(Boolean(draft.passFeeToPayer));
+      setCustomFields(Array.isArray(draft.customFields) ? draft.customFields : []);
+      setErrors({});
+      setAiNotice(
+        `Configured via ${draft.engine || 'WePay AI'} — review the auto-filled fields below or publish immediately.`
+      );
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : 'Unable to generate AI collection draft.'
+      );
+    } finally {
+      setAiGenerating(false);
+    }
+  };
 
   const handleSelectType = (nextType: CollectionType) => {
     setType(nextType);
@@ -180,7 +224,7 @@ export const CreateCollectionPage: React.FC = () => {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
               <Button variant="outline" onClick={() => setShareOpen(true)} fullWidth>
                 <Share2 className="h-4 w-4" />
-                <span>Share & QR Code</span>
+                <span>Share &amp; QR Code</span>
               </Button>
               <Link to={`/c/${createdCollection.slug}`} className="w-full">
                 <Button variant="outline" fullWidth>
@@ -210,10 +254,76 @@ export const CreateCollectionPage: React.FC = () => {
       <div>
         <h1 className="font-display text-2xl font-bold text-slate-900">Create Collection</h1>
         <p className="text-sm text-slate-600 mt-0.5">
-          Configure a payment link for group pooling, departmental dues, or stock-limited
-          pre-orders.
+          Describe your collection in plain English with AI or configure every rule manually.
         </p>
       </div>
+
+      {/* AI Smart Collection Builder */}
+      <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50/80 via-white to-slate-50">
+        <div className="space-y-3.5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">
+                  AI Smart Collection Builder
+                </h2>
+                <p className="text-xs text-slate-600">
+                  Describe what you are collecting and let WePay AI auto-configure mode, pricing, stock caps, and custom fields.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleGenerateWithAi();
+                }
+              }}
+              placeholder="e.g. Split ₦75,000 Starlink bill among 5 roommates..."
+              className="flex-1 h-10 px-3.5 rounded-lg border border-indigo-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600"
+            />
+            <Button
+              type="button"
+              onClick={() => handleGenerateWithAi()}
+              loading={aiGenerating}
+              disabled={!aiPrompt.trim()}
+            >
+              {!aiGenerating && <Wand2 className="h-4 w-4" />}
+              <span>{aiGenerating ? 'Generating...' : 'Auto-Fill Form'}</span>
+            </Button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-medium text-slate-500 mr-1">Try:</span>
+            {AI_PRESET_PROMPTS.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => handleGenerateWithAi(preset)}
+                className="text-[11px] px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-700 hover:border-indigo-300 hover:text-indigo-700 transition-colors cursor-pointer"
+              >
+                {preset}
+              </button>
+            ))}
+          </div>
+
+          {aiNotice && (
+            <div className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+              <span>{aiNotice}</span>
+            </div>
+          )}
+        </div>
+      </Card>
 
       {submitError && <AlertBanner variant="error" message={submitError} />}
 
@@ -424,7 +534,6 @@ export const CreateCollectionPage: React.FC = () => {
                 </p>
               </div>
 
-              {/* Fee Handling */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-slate-700">
                   Processing Fee Handling

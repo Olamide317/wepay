@@ -86,13 +86,8 @@ function normalizeCollection(raw: any): Collection {
         : raw?.totalTarget !== undefined
         ? Number(raw.totalTarget)
         : undefined,
-    amountRaised: Number(raw?.amountRaised ?? raw?.collectedAmount ?? 0),
-    stockLimit:
-      raw?.stockLimit !== undefined
-        ? Number(raw.stockLimit)
-        : raw?.expectedPayers !== undefined
-        ? Number(raw.expectedPayers)
-        : undefined,
+    amountRaised: Number(raw?.amountRaised ?? raw?.totalCollected ?? raw?.collectedAmount ?? 0),
+    stockLimit: raw?.stockLimit !== undefined && raw?.stockLimit !== null ? Number(raw.stockLimit) : undefined,
     stockSold: Number(raw?.stockSold ?? raw?.paidCount ?? 0),
     maxQuantityPerOrder:
       raw?.maxQuantityPerOrder !== undefined ? Number(raw.maxQuantityPerOrder) : 5,
@@ -471,13 +466,44 @@ export const wepayService = {
     return { collection: found, isMock };
   },
 
+  async generateAiCollectionDraft(prompt: string): Promise<{
+    draft: Partial<CreateCollectionInput> & { engine?: string };
+  }> {
+    if (isBackendConfigured()) {
+      return apiRequest<{
+        draft: Partial<CreateCollectionInput> & { engine?: string };
+      }>(
+        '/api/collections/ai-draft',
+        {
+          method: 'POST',
+          body: JSON.stringify({ prompt }),
+        },
+        true
+      );
+    }
+
+    await delay(350);
+    return {
+      draft: {
+        type: 'POOL',
+        title: prompt.slice(0, 60),
+        description: `Group collection for ${prompt}.`,
+        pricingRule: 'FIXED',
+        amount: 5000,
+        targetAmount: 25000,
+        passFeeToPayer: true,
+        customFields: [],
+        engine: 'Local Sandbox AI',
+      },
+    };
+  },
+
   async createCollection(
     input: CreateCollectionInput
   ): Promise<{ collection: Collection; isMock: boolean }> {
     if (isBackendConfigured()) {
       // Send both Joshua's field names and your Express schema aliases
-      const mode =
-        input.type === 'POOL' ? 'SPLIT' : input.type === 'INVENTORY' ? 'FIXED' : 'OPEN';
+      const mode = input.type === 'POOL' ? 'SPLIT' : 'FLEXIBLE';
       const totalTarget =
         input.type === 'POOL'
           ? input.targetAmount
@@ -494,7 +520,7 @@ export const wepayService = {
             mode,
             totalTarget,
             perPersonAmount: input.amount,
-            expectedPayers: input.type === 'INVENTORY' ? input.stockLimit : undefined,
+            expectedPayers: [],
           }),
         },
         true
@@ -705,7 +731,7 @@ export const wepayService = {
       }
       if (baseAmount > remainingTarget) {
         throw new Error(
-          `Contribution exceeds remaining pool balance of ₦${remainingTarget.toLocaleString('en-NG')}.`
+          `Contribution exceeds remaining pool balance of Ã¢â€šÂ¦${remainingTarget.toLocaleString('en-NG')}.`
         );
       }
     }

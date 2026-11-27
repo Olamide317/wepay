@@ -39,10 +39,30 @@ const collectionSchema = new mongoose.Schema(
       unique: true,
       index: true,
     },
+    type: {
+      type: String,
+      enum: ['POOL', 'OPEN', 'INVENTORY'],
+      default: 'OPEN',
+    },
     mode: {
       type: String,
       enum: ['SPLIT', 'FLEXIBLE'],
-      required: true,
+      default: 'FLEXIBLE',
+    },
+    pricingRule: {
+      type: String,
+      enum: ['FIXED', 'MINIMUM', 'FLEXIBLE'],
+      default: 'FIXED',
+    },
+    amount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    targetAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
     totalTarget: {
       type: Number,
@@ -54,14 +74,51 @@ const collectionSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    amountRaised: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     totalCollected: {
       type: Number,
       default: 0,
       min: 0,
     },
+    stockLimit: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+    stockSold: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    maxQuantityPerOrder: {
+      type: Number,
+      default: 5,
+      min: 1,
+    },
+    passFeeToPayer: {
+      type: Boolean,
+      default: true,
+    },
+    customFields: {
+      type: [mongoose.Schema.Types.Mixed],
+      default: [],
+    },
+    contributorCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    expiresAt: {
+      type: Date,
+      default: null,
+    },
     status: {
       type: String,
-      enum: ['ACTIVE', 'CLOSED'],
+      enum: ['ACTIVE', 'COMPLETED', 'PAUSED', 'CLOSED'],
       default: 'ACTIVE',
     },
     expectedPayers: {
