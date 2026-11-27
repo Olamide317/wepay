@@ -110,6 +110,21 @@ const swaggerSpec = {
           },
         ],
       },
+      Organizer: {
+        type: "object",
+        properties: {
+          _id: { type: "string" },
+          id: { type: "string" },
+          fullName: { type: "string", example: "Olamide Adeyemi" },
+          email: { type: "string", format: "email", example: "organizer@example.com" },
+          phone: { type: "string", example: "08012345678" },
+          handle: { type: "string", example: "nacos-treasury" },
+          avatarUrl: { type: "string", format: "uri" },
+          settlementBank: { type: "object", nullable: true },
+          verified: { type: "boolean" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
       PaymentInitializeRequest: {
         type: "object",
         required: ["slug", "contributorName"],
@@ -130,11 +145,12 @@ const swaggerSpec = {
       },
       PaymentVerifyRequest: {
         type: "object",
+        description: "Supply txnRef, txnref, or transactionreference.",
         required: ["txnRef"],
         properties: {
           txnRef: { type: "string", example: "WP-1732704812940-8821" },
-          simulateQaSuccess: { type: "boolean", default: false },
-          outcome: { type: "string", enum: ["SUCCESS", "FAILED"], example: "SUCCESS" },
+          txnref: { type: "string" },
+          transactionreference: { type: "string" },
         },
       },
       Transaction: {
@@ -184,19 +200,47 @@ const swaggerSpec = {
         type: "object",
         properties: {
           success: { type: "boolean", example: false },
-          message: { type: "string", example: "Collection stock limit reached (COMPLETED)." },
+          message: { type: "string", example: "Collection not found" },
+          error: { type: "string" },
         },
       },
     },
   },
   paths: {
+    "/": {
+      get: {
+        tags: ["System"],
+        summary: "API landing endpoint",
+        servers: [
+          { url: "https://wepay-slkv.onrender.com" },
+          { url: "http://localhost:5000" },
+        ],
+        responses: {
+          200: {
+            description: "API status and links to the API documentation and health check",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    message: { type: "string", example: "WePay API is running" },
+                    docs: { type: "string", example: "/api-docs" },
+                    health: { type: "string", example: "/api/health" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     "/health": {
       get: {
         tags: ["System"],
         summary: "Backend health check",
         responses: {
           200: {
-            description: "API & MongoDB connection healthy",
+            description: "API health and current database connection state",
             content: {
               "application/json": {
                 schema: {
@@ -211,6 +255,106 @@ const swaggerSpec = {
               },
             },
           },
+        },
+      },
+    },
+    "/public/c/{slug}": {
+      get: {
+        tags: ["Collections"],
+        summary: "Fetch public collection details by slug",
+        parameters: [
+          {
+            name: "slug",
+            in: "path",
+            required: true,
+            schema: { type: "string", example: "hostel-starlink-split-x9k2" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "Collection metadata and recent successful transactions",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    collection: { $ref: "#/components/schemas/Collection" },
+                    recentTransactions: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/Transaction" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          404: { description: "Collection not found" },
+        },
+      },
+    },
+    "/public/u/{handle}": {
+      get: {
+        tags: ["Profile"],
+        summary: "Fetch an organizer's public hub and active collections",
+        parameters: [
+          {
+            name: "handle",
+            in: "path",
+            required: true,
+            schema: { type: "string", example: "nacos-treasury" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "Organizer profile and active collections",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    organizer: { $ref: "#/components/schemas/Organizer" },
+                    collections: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/Collection" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          404: { description: "Organizer handle not found" },
+        },
+      },
+    },
+    "/public/receipts/{receiptCode}": {
+      get: {
+        tags: ["Receipts"],
+        summary: "Retrieve a public receipt by receipt code or transaction reference",
+        parameters: [
+          {
+            name: "receiptCode",
+            in: "path",
+            required: true,
+            schema: { type: "string", example: "RCP-9F3A2C8E1B" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "Receipt transaction and related collection details",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    transaction: { $ref: "#/components/schemas/Transaction" },
+                    collection: { type: "object" },
+                    isSimulated: { type: "boolean", example: false },
+                  },
+                },
+              },
+            },
+          },
+          404: { description: "Receipt code not found or invalid" },
         },
       },
     },
@@ -237,9 +381,24 @@ const swaggerSpec = {
           },
         },
         responses: {
-          201: { description: "Organizer registered and JWT issued" },
-          400: { description: "Validation error or email already exists" },
+          201: {
+            description: "Organizer registered and JWT issued",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    token: { type: "string" },
+                    user: { $ref: "#/components/schemas/Organizer" },
+                    organizer: { $ref: "#/components/schemas/Organizer" },
+                  },
+                },
+              },
+            },
+          },
+          400: { description: "Full name, email, and password are required" },
           409: { description: "An account with this email already exists" },
+          500: { description: "Registration failed" },
         },
       },
     },
@@ -271,13 +430,16 @@ const swaggerSpec = {
                   type: "object",
                   properties: {
                     token: { type: "string", example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
-                    user: { type: "object" },
+                    user: { $ref: "#/components/schemas/Organizer" },
+                    organizer: { $ref: "#/components/schemas/Organizer" },
                   },
                 },
               },
             },
           },
+          400: { description: "Email and password are required" },
           401: { description: "Invalid credentials" },
+          500: { description: "Login failed" },
         },
       },
     },
@@ -287,7 +449,20 @@ const swaggerSpec = {
         summary: "Get the authenticated organizer",
         security: [{ bearerAuth: [] }],
         responses: {
-          200: { description: "Current organizer profile" },
+          200: {
+            description: "Current organizer profile",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    user: { $ref: "#/components/schemas/Organizer" },
+                    organizer: { $ref: "#/components/schemas/Organizer" },
+                  },
+                },
+              },
+            },
+          },
           401: { description: "Unauthorized" },
         },
       },
@@ -315,7 +490,22 @@ const swaggerSpec = {
           },
         },
         responses: {
-          200: { description: "Settlement bank saved" },
+          200: {
+            description: "Settlement bank saved",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    organizer: { $ref: "#/components/schemas/Organizer" },
+                    user: { $ref: "#/components/schemas/Organizer" },
+                  },
+                },
+              },
+            },
+          },
+          400: { description: "Invalid or incomplete settlement bank details" },
+          404: { description: "Organizer not found" },
           401: { description: "Unauthorized" },
         },
       },
@@ -592,7 +782,7 @@ const swaggerSpec = {
         tags: ["Payments"],
         summary: "Server-side Interswitch IPG transaction requery and receipt settlement",
         description:
-          "Queries Interswitch using the transaction reference and stored kobo amount. A successful approval atomically settles inventory or contribution totals and creates the receipt hash.",
+          "Queries Interswitch using the transaction reference and stored kobo amount. Settlement requires ResponseCode '00' and a returned Amount exactly matching the transaction amount in kobo. Transaction and collection updates are committed idempotently per transaction reference.",
         requestBody: {
           required: true,
           content: {

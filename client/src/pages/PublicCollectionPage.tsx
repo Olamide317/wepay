@@ -10,7 +10,7 @@ import {
   Plus,
   ShieldCheck,
 } from 'lucide-react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DynamicCustomFieldInput } from '../components/FormBuilder/DynamicCustomFieldInput';
 import { InterswitchCheckoutModal } from '../components/InterswitchCheckoutModal';
 import { Button } from '../components/ui/Button';
@@ -47,6 +47,8 @@ interface FormErrors {
 export const PublicCollectionPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTxnRef = searchParams.get('txnref') || searchParams.get('txnRef');
 
   const [collection, setCollection] = useState<Collection | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,6 +70,35 @@ export const PublicCollectionPage: React.FC = () => {
   // Interswitch checkout modal state
   const [checkoutParams, setCheckoutParams] = useState<InterswitchCheckoutParams | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+
+  useEffect(() => {
+    if (!returnTxnRef) return;
+
+    let active = true;
+    setInitializing(true);
+    setInitError(null);
+    wepayService
+      .verifyPaymentByReference(returnTxnRef)
+      .then((transaction) => {
+        if (!active) return;
+        if (transaction.status !== 'SUCCESS') {
+          throw new Error('Interswitch has not confirmed this payment yet. Please retry verification.');
+        }
+        navigate(`/receipt/${encodeURIComponent(transaction.receiptCode)}`, { replace: true });
+      })
+      .catch((err) => {
+        if (active) {
+          setInitError(
+            err instanceof Error ? err.message : 'Unable to verify the returned Interswitch payment.'
+          );
+          setInitializing(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [returnTxnRef, navigate]);
 
   useEffect(() => {
     let active = true;

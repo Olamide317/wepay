@@ -120,7 +120,9 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
       amount: String(params.amount),
       currency: 566,
       cust_email: contributorEmail || 'contributor@wepay.ng',
-      site_redirect_url: `${window.location.origin}/receipt/${params.receiptCode}`,
+      site_redirect_url: `${window.location.origin}${window.location.pathname}?txnref=${encodeURIComponent(
+        params.txnRef
+      )}`,
       mode: 'TEST',
       onComplete: async (response: Record<string, unknown>) => {
         const respCode = String(response?.resp || response?.ResponseCode || '');

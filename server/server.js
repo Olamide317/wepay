@@ -4,6 +4,9 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./docs/swagger");
+const { getOrganizerPublicHub } = require("./controllers/profileController");
+const { getCollectionBySlug } = require("./controllers/collectionController");
+const { getReceipt } = require("./controllers/paymentController");
 
 const authRoutes = require("./routes/authRoutes");
 const collectionRoutes = require("./routes/collectionRoutes");
@@ -12,19 +15,24 @@ const profileRoutes = require("./routes/profileRoutes");
 
 const app = express();
 
-// Allow Vercel frontend, Render Swagger UI, and local development origins
+const configuredOrigins = process.env.CLIENT_URL
+  ? process.env.CLIENT_URL
+      .split(",")
+      .map((origin) => origin.trim().replace(/\/+$/, ""))
+      .filter(Boolean)
+  : null;
 const allowedOrigins = [
   "https://wepay-peach.vercel.app",
   "https://wepay-slkv.onrender.com",
   "http://localhost:5173",
   "http://localhost:3000",
-  process.env.CLIENT_URL,
-].filter(Boolean);
+  ...(configuredOrigins || []),
+];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || !configuredOrigins || allowedOrigins.includes(origin.replace(/\/+$/, ""))) {
         return callback(null, true);
       }
       return callback(new Error(`CORS blocked for origin: ${origin}`));
@@ -77,8 +85,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/collections", collectionRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/profile", profileRoutes);
-app.use("/api/public", collectionRoutes);
-app.use("/api/public", paymentRoutes);
+app.get("/api/public/u/:handle", getOrganizerPublicHub);
+app.get("/api/public/c/:slug", getCollectionBySlug);
+app.get("/api/public/receipts/:receiptCode", getReceipt);
 
 // 404 fallback
 app.use((req, res) => {

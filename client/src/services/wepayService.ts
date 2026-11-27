@@ -784,6 +784,18 @@ export const wepayService = {
     return { checkoutParams, transaction: pendingTx, isMock: true };
   },
 
+  async verifyPaymentByReference(txnRef: string): Promise<Transaction> {
+    if (!isBackendConfigured()) {
+      throw new Error('Hosted checkout verification requires the WePay backend.');
+    }
+
+    const res = await apiRequest<{ transaction: Transaction }>('/api/payments/verify', {
+      method: 'POST',
+      body: JSON.stringify({ txnRef }),
+    });
+    return res.transaction;
+  },
+
   async simulateSandboxVerification(
     receiptCode: string,
     outcome: 'SUCCESS' | 'FAILED' | 'PENDING'
@@ -795,7 +807,6 @@ export const wepayService = {
           method: 'POST',
           body: JSON.stringify({
             txnRef: existing.transaction.txnRef,
-            simulateQaSuccess: outcome === 'SUCCESS',
           }),
         });
       }
