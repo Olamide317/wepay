@@ -2,11 +2,12 @@ const mongoose = require('mongoose');
 const Collection = require('../models/Collection');
 
 const buildUniqueSlug = async (title) => {
-  const base = title
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'collection';
+  const base =
+    title
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'collection';
 
   let slug;
   let exists = true;
@@ -28,7 +29,7 @@ exports.createCollection = async (req, res) => {
 
     const numericTarget = Number(totalTarget) || 0;
     let sanitizedPayers = [];
-    let computedPerPerson = 0;
+    let computedPerPerson = Number(perPersonAmount) || 0;
 
     if (mode === 'SPLIT') {
       sanitizedPayers = Array.isArray(expectedPayers)
@@ -41,9 +42,7 @@ exports.createCollection = async (req, res) => {
             }))
         : [];
 
-      if (Number(perPersonAmount) > 0) {
-        computedPerPerson = Number(perPersonAmount);
-      } else if (numericTarget > 0 && sanitizedPayers.length > 0) {
+      if (computedPerPerson <= 0 && numericTarget > 0 && sanitizedPayers.length > 0) {
         computedPerPerson = Math.ceil(numericTarget / sanitizedPayers.length);
       }
     }
@@ -105,7 +104,7 @@ exports.getCollectionBySlug = async (req, res) => {
       })
         .sort({ verifiedAt: -1 })
         .limit(15)
-        .select('payerName amount note verifiedAt txnRef');
+        .select('payerName contributorName amount baseAmount totalPaid note verifiedAt txnRef');
     }
 
     return res.status(200).json({ collection, recentTransactions });
@@ -114,9 +113,43 @@ exports.getCollectionBySlug = async (req, res) => {
   }
 };
 
+exports.getCollectionLedger = async (req, res) => {
+  try {
+    const identifier = req.params.id;
+    const query = mongoose.Types.ObjectId.isValid(identifier)
+      ? { _id: identifier }
+      : { slug: identifier };
+
+    const collection = await Collection.findOne(query);
+    if (!collection) {
+      return res.status(404).json({ message: 'Collection not found' });
+    }
+
+    if (collection.organizer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Only the organizer can view this ledger' });
+    }
+
+    let transactions = [];
+    if (mongoose.models.Transaction) {
+      transactions = await mongoose.models.Transaction.find({
+        collectionId: collection._id,
+      }).sort({ createdAt: -1 });
+    }
+
+    return res.status(200).json({ collection, transactions });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to load collection ledger', error: error.message });
+  }
+};
+
 exports.updateCollectionStatus = async (req, res) => {
   try {
-    const collection = await Collection.findOne({ slug: req.params.slug });
+    const identifier = req.params.slug;
+    const query = mongoose.Types.ObjectId.isValid(identifier)
+      ? { _id: identifier }
+      : { slug: identifier };
+
+    const collection = await Collection.findOne(query);
 
     if (!collection) {
       return res.status(404).json({ message: 'Collection not found' });
@@ -126,9 +159,10 @@ exports.updateCollectionStatus = async (req, res) => {
       return res.status(403).json({ message: 'Only the organizer can update this collection' });
     }
 
+    const requested = req.body.status === 'PAUSED' ? 'CLOSED' : req.body.status;
     const nextStatus =
-      req.body.status && ['ACTIVE', 'CLOSED'].includes(req.body.status)
-        ? req.body.status
+      requested && ['ACTIVE', 'CLOSED'].includes(requested)
+        ? requested
         : collection.status === 'ACTIVE'
         ? 'CLOSED'
         : 'ACTIVE';

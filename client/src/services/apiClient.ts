@@ -1,29 +1,9 @@
 /**
  * WePay Backend REST API Client
- *
- * Documented Backend Endpoints:
- * - POST /api/auth/register
- * - POST /api/auth/login
- * - POST /api/profile/bank
- * - POST /api/collections
- * - GET  /api/collections
- * - GET  /api/collections/:id/ledger
- * - PATCH /api/collections/:id/status
- * - GET  /api/public/c/:slug
- * - GET  /api/public/u/:handle
- * - POST /api/payments/initialize
- * - GET  /api/payments/receipt/:receiptCode
- *
- * NOTE: POST /api/payments/webhook is a server-to-server Interswitch webhook
- * and MUST NEVER be called from the browser.
- *
- * Contract Assumptions (pending final backend confirmation):
- * 1. Auth endpoints return `{ token, organizer }` (or `{ data: { token, user } }`).
- * 2. Protected organizer routes accept `Authorization: Bearer <token>`.
- * 3. `POST /api/payments/initialize` returns `{ txnRef, amount, merchantCode, payItemId, feeAmount, totalPaid, receiptCode }`.
  */
 
-const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+const RAW_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+const API_BASE_URL = RAW_BASE_URL.endsWith('/api') ? RAW_BASE_URL.slice(0, -4) : RAW_BASE_URL;
 const TOKEN_KEY = 'wepay_auth_token';
 
 export function isBackendConfigured(): boolean {
@@ -87,7 +67,8 @@ export async function apiRequest<T>(
     }
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const response = await fetch(`${API_BASE_URL}${normalizedPath}`, {
     ...options,
     headers,
   });
