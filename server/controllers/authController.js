@@ -2,6 +2,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { sendWelcomeEmail } = require("../services/emailService");
+const { isFounderEmail } = require("../middleware/authMiddleware");
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const signToken = (userId) => {
@@ -27,18 +28,23 @@ const buildUniqueHandle = async (preferred, fallbackName) => {
   return candidate;
 };
 
-const formatUser = (user) => ({
-  _id: user._id,
-  id: user._id,
-  fullName: user.fullName,
-  email: user.email,
-  phone: user.phone,
-  handle: user.handle || slugifyHandle(user.fullName),
-  avatarUrl: user.avatarUrl || undefined,
-  settlementBank: user.settlementBank || undefined,
-  verified: Boolean(user.verified),
-  createdAt: user.createdAt,
-});
+const formatUser = (user) => {
+  const isFounder = isFounderEmail(user.email);
+  return {
+    _id: user._id,
+    id: user._id,
+    fullName: user.fullName,
+    email: user.email,
+    phone: user.phone,
+    handle: user.handle || slugifyHandle(user.fullName),
+    avatarUrl: user.avatarUrl || undefined,
+    settlementBank: user.settlementBank || undefined,
+    verified: Boolean(user.verified),
+    isFounder,
+    role: isFounder ? "SUPER_ADMIN" : user.role || "ORGANIZER",
+    createdAt: user.createdAt,
+  };
+};
 
 exports.register = async (req, res) => {
   try {

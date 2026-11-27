@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   Plus,
+  ShieldCheck,
   UserCircle,
   X,
   ExternalLink,
@@ -43,6 +44,7 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
   const [notifOpen, setNotifOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const isFounder = Boolean(organizer?.isFounder || organizer?.role === 'SUPER_ADMIN');
 
   if (requireAuth && isLoading) {
     return (
@@ -98,6 +100,15 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
               <span>{label}</span>
             </NavLink>
           ))}
+          {isFounder && (
+            <NavLink to="/admin" className={navLinkClass}>
+              <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>Founder Console</span>
+              <span className="ml-auto rounded-full bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-indigo-700">
+                Admin
+              </span>
+            </NavLink>
+          )}
         </nav>
 
         <div className="p-3 border-t border-slate-200/80 space-y-2">
@@ -190,6 +201,19 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
                   <span>{label}</span>
                 </NavLink>
               ))}
+              {isFounder && (
+                <NavLink
+                  to="/admin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={navLinkClass}
+                >
+                  <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span>Founder Console</span>
+                  <span className="ml-auto rounded-full bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-indigo-700">
+                    Admin
+                  </span>
+                </NavLink>
+              )}
             </nav>
             <div className="p-3 border-t border-slate-200 space-y-2">
               {isAuthenticated && organizer ? (

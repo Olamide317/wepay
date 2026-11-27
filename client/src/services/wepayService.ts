@@ -1,4 +1,5 @@
 import {
+  AdminOverviewData,
   Collection,
   CollectionStatus,
   CreateCollectionInput,
@@ -48,6 +49,8 @@ function normalizeOrganizer(raw: any): Organizer {
     avatarUpdatedAt: raw?.avatarUpdatedAt,
     settlementBank: raw?.settlementBank,
     verified: Boolean(raw?.verified),
+    isFounder: Boolean(raw?.isFounder),
+    role: raw?.role === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'ORGANIZER',
     createdAt: raw?.createdAt || new Date().toISOString(),
   };
 }
@@ -440,6 +443,26 @@ export const wepayService = {
 
     const store = loadSandboxStore();
     return profilePictureService.resolveOrganizerAvatar(store.organizer);
+  },
+
+  async getAdminOverview(): Promise<AdminOverviewData> {
+    return apiRequest<AdminOverviewData>('/api/admin/overview', {}, true);
+  },
+
+  async exportAdminTransactionsCsv(): Promise<void> {
+    const csv = await apiRequest<string>(
+      '/api/admin/transactions/export.csv',
+      {},
+      true
+    );
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'wepay-platform-transactions.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   },
 
   // ---------------------------------------------------------------------------

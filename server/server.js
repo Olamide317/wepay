@@ -9,6 +9,7 @@ const { getCollectionBySlug } = require("./controllers/collectionController");
 const { getReceipt } = require("./controllers/paymentController");
 
 const authRoutes = require("./routes/authRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 const collectionRoutes = require("./routes/collectionRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const profileRoutes = require("./routes/profileRoutes");
@@ -82,6 +83,7 @@ app.get("/api/health", (req, res) => {
 
 // Core API routes
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/collections", collectionRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/profile", profileRoutes);

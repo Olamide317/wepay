@@ -34,6 +34,8 @@ export interface Organizer {
   avatarUpdatedAt?: string;
   settlementBank?: SettlementBank;
   verified?: boolean;
+  isFounder?: boolean;
+  role?: 'ORGANIZER' | 'SUPER_ADMIN';
   createdAt: string;
 }
 
@@ -106,6 +108,59 @@ export interface Transaction {
   paidAt?: string;
   createdAt: string;
   isSimulated?: boolean;
+}
+
+export interface AdminPerson {
+  fullName?: string;
+  name?: string;
+  email?: string;
+}
+
+export interface AdminTransaction extends Omit<Transaction, 'collectionId'> {
+  payerName?: string;
+  collectionId:
+    | string
+    | {
+        title?: string;
+        slug?: string;
+        organizer?: AdminPerson | null;
+      }
+    | null;
+}
+
+export interface AdminCollection {
+  _id: string;
+  title: string;
+  slug: string;
+  type: CollectionType;
+  status: CollectionStatus;
+  totalCollected: number;
+  contributorCount: number;
+  createdAt: string;
+  organizer?: AdminPerson | null;
+}
+
+export interface AdminOrganizer extends AdminPerson {
+  _id: string;
+  handle?: string;
+  createdAt?: string;
+  collectionCount: number;
+  totalVolumeRaised: number;
+}
+
+export interface AdminOverviewData {
+  kpis: {
+    totalGrossVolume: number;
+    totalFeeRevenue: number;
+    totalOrganizers: number;
+    activeCollections: number;
+    totalTransactions: number;
+    successfulTransactions: number;
+    conversionRate: number;
+  };
+  recentTransactions: AdminTransaction[];
+  collections: AdminCollection[];
+  organizers: AdminOrganizer[];
 }
 
 export interface PaymentInitializeRequest {
