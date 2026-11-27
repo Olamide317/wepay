@@ -120,10 +120,11 @@ export const DashboardOverviewPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Page Heading */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200/80 pb-5">
         <div>
-          <h1 className="font-display text-2xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-sm text-slate-600 mt-0.5">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-indigo-600">Workspace</p>
+          <h1 className="font-display text-2xl sm:text-[28px] font-bold tracking-tight text-slate-950">Dashboard</h1>
+          <p className="text-sm text-slate-600 mt-1">
             Monitor collection totals, active links, and incoming contributor payments.
           </p>
         </div>
@@ -151,7 +152,8 @@ export const DashboardOverviewPage: React.FC = () => {
 
       {/* Summary Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Card padding="md">
+        <Card padding="md" className="relative overflow-hidden">
+          <div className="absolute left-0 top-5 h-8 w-1 rounded-r-full bg-indigo-500" aria-hidden="true" />
           <p className="text-xs font-medium text-slate-500">
             Total Amount Collected
           </p>

@@ -5,6 +5,7 @@ import { WePayLogo } from '../components/WePayLogo';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useAuth } from '../context/AuthContext';
+import { Footer } from '../components/Footer';
 
 export const LandingPage: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -192,19 +193,7 @@ export const LandingPage: React.FC = () => {
         </section>
       </main>
 
-      <footer className="bg-white border-t border-slate-200 py-6">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <span>WePay Nigeria · Collective Commerce &amp; Group Payments</span>
-          <div className="flex items-center gap-5">
-            <Link to="/login" className="hover:text-slate-900">
-              Organizer Login
-            </Link>
-            <Link to="/register" className="hover:text-slate-900">
-              Create Account
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React from 'react';
 import { Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { WePayLogo } from '../components/WePayLogo';
+import { Footer } from '../components/Footer';
 
 interface PublicLayoutProps {
   children: React.ReactNode;
@@ -14,7 +15,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children, maxWidth =
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="no-print bg-white border-b border-slate-200">
+      <header className="no-print bg-white/95 border-b border-slate-200/80 backdrop-blur-xl">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           <Link to="/" aria-label="WePay Home">
             <WePayLogo size="sm" />
@@ -30,19 +31,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children, maxWidth =
         {children}
       </main>
 
-      <footer className="no-print border-t border-slate-200 bg-white py-4">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
-          <span>WePay Collective Commerce · Nigerian Naira (NGN)</span>
-          <div className="flex items-center gap-4">
-            <Link to="/login" className="hover:text-slate-900 transition-colors">
-              Organizer Sign In
-            </Link>
-            <Link to="/" className="hover:text-slate-900 transition-colors">
-              Explore Modes
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

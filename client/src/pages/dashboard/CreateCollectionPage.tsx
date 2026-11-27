@@ -18,6 +18,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input, Select, Textarea } from '../../components/ui/FormControls';
 import { AlertBanner } from '../../components/ui/StateViews';
+import { useAuth } from '../../context/AuthContext';
 import { wepayService } from '../../services/wepayService';
 import { Collection, CollectionType, CustomField, PricingRule } from '../../types/wepay';
 import { formatNaira, getCollectionModeLabel } from '../../utils/formatters';
@@ -37,6 +38,15 @@ const AI_PRESET_PROMPTS = [
 ];
 
 export const CreateCollectionPage: React.FC = () => {
+  const { organizer } = useAuth();
+  const settlementBank = organizer?.settlementBank;
+  const hasSettlementBank = Boolean(
+    settlementBank?.bankCode &&
+      settlementBank?.bankName &&
+      settlementBank?.accountNumber &&
+      settlementBank?.accountName
+  );
+
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiNotice, setAiNotice] = useState<string | null>(null);
@@ -140,6 +150,12 @@ export const CreateCollectionPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+    if (!hasSettlementBank) {
+      setSubmitError(
+        'Bank details are required before you can create a collection. Add your settlement bank account first.'
+      );
+      return;
+    }
     if (!validate()) return;
 
     setSubmitting(true);
@@ -257,6 +273,21 @@ export const CreateCollectionPage: React.FC = () => {
           Describe your collection in plain English with AI or configure every rule manually.
         </p>
       </div>
+
+      {!hasSettlementBank && (
+        <AlertBanner
+          variant="warning"
+          title="Settlement bank details required"
+          message="Add a valid settlement bank account before you can publish a collection or pool."
+          action={
+            <Link to="/dashboard/profile">
+              <Button variant="outline" size="sm">
+                Add Bank Details
+              </Button>
+            </Link>
+          }
+        />
+      )}
 
       {/* AI Smart Collection Builder */}
       <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50/80 via-white to-slate-50">
@@ -660,7 +691,13 @@ export const CreateCollectionPage: React.FC = () => {
               )}
 
               <div className="pt-2 border-t border-slate-100">
-                <Button type="submit" fullWidth size="lg" loading={submitting}>
+                <Button
+                  type="submit"
+                  fullWidth
+                  size="lg"
+                  loading={submitting}
+                  disabled={!hasSettlementBank}
+                >
                   {submitting ? 'Creating Collection...' : 'Create Collection'}
                 </Button>
               </div>

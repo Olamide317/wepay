@@ -19,6 +19,7 @@ import {
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import fundImage from '../../assets/images/fund.jpg';
 
 const PROBLEMS = [
   {
@@ -115,7 +116,14 @@ export const ProductOverviewPage: React.FC = () => {
   return (
     <div id="overview-top" className="space-y-12 pb-6">
       {/* SECTION A: HERO SECTION */}
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 lg:p-10">
+      <section
+        className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 lg:p-10 bg-cover bg-center shadow-[0_20px_56px_-18px_rgba(15,23,42,0.42)]"
+        style={{
+          backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.62)), url(${fundImage})`,
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
         <div className="max-w-3xl space-y-5">
           <p className="text-xs font-semibold tracking-wider uppercase text-indigo-600">
             WePay Platform Overview
@@ -165,7 +173,8 @@ export const ProductOverviewPage: React.FC = () => {
           </h2>
           <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
             Whether you are splitting a shared subscription, coordinating class dues, or funding a
-            celebration, collecting money in Nigeria usually ends up buried in group chat threads.
+            celebration, collecting money in Nigeria usually ends up buried in group chat messages
+            and wahala.
           </p>
         </div>
 

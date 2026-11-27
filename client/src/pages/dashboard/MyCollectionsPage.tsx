@@ -51,8 +51,9 @@ export const MyCollectionsPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-slate-900">My Collections</h1>
-          <p className="text-sm text-slate-600 mt-0.5">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-indigo-600">Library</p>
+          <h1 className="font-display text-2xl sm:text-[28px] font-bold tracking-tight text-slate-950">My Collections</h1>
+          <p className="text-sm text-slate-600 mt-1">
             All bill splits, open dues, and merchant pre-order links. Click any card to open its payment page.
           </p>
         </div>
@@ -145,7 +146,7 @@ export const MyCollectionsPage: React.FC = () => {
                     navigate(`/c/${col.slug}`);
                   }
                 }}
-                className="text-left rounded-xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between space-y-5 cursor-pointer transition-all hover:border-indigo-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-600/30"
+                className="group text-left rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.28)] flex flex-col justify-between space-y-5 cursor-pointer transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-[0_18px_38px_-26px_rgba(79,70,229,0.32)] focus:outline-none focus:ring-4 focus:ring-indigo-600/10"
               >
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-2">

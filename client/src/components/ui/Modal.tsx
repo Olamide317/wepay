@@ -50,7 +50,7 @@ export const Modal: React.FC<ModalProps> = ({
       }}
     >
       <div
-        className={`w-full ${SIZE_CLASSES[size]} bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden max-h-[92vh] flex flex-col`}
+        className={`w-full ${SIZE_CLASSES[size]} bg-white rounded-2xl border border-slate-200/90 shadow-[0_24px_80px_-24px_rgba(15,23,42,0.38)] overflow-hidden max-h-[92vh] flex flex-col`}
       >
         <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-slate-200">
           <div>

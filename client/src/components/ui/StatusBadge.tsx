@@ -55,7 +55,7 @@ export const StatusBadge: React.FC<{ status: AnyStatus }> = ({ status }) => {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border text-xs font-medium whitespace-nowrap shrink-0 ${cfg.classes}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold whitespace-nowrap shrink-0 ${cfg.classes}`}
     >
       <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       <span>{cfg.label}</span>

@@ -19,6 +19,7 @@ import { WePayLogo } from '../components/WePayLogo';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { formatDisplayName, formatFullHeaderDate } from '../utils/formatters';
+import { Footer } from '../components/Footer';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Overview', Icon: Compass, end: true },
@@ -58,17 +59,17 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
   };
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+    `group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-[background-color,color,transform] duration-150 whitespace-nowrap ${
       isActive
-        ? 'bg-indigo-50 text-indigo-700'
-        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+        ? 'bg-indigo-50 text-indigo-700 shadow-[inset_0_0_0_1px_rgba(199,210,254,0.55)]'
+        : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-950'
     }`;
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white border-r border-slate-200 z-30">
-        <div className="h-16 px-5 flex items-center border-b border-slate-200">
+      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white/95 border-r border-slate-200/80 z-30 backdrop-blur-xl">
+        <div className="h-[72px] px-5 flex items-center border-b border-slate-200/80">
           <Link to="/" aria-label="WePay Overview Home">
             <WePayLogo />
           </Link>
@@ -83,7 +84,7 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
           ))}
         </nav>
 
-        <div className="p-3 border-t border-slate-200 space-y-2">
+        <div className="p-3 border-t border-slate-200/80 space-y-2">
           {isAuthenticated && organizer ? (
             <>
               <Link
@@ -227,8 +228,8 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
       {/* Main Content Shell */}
       <div className="flex-1 lg:pl-64 flex flex-col min-w-0">
         {/* Top Header */}
-        <header className="sticky top-0 z-20 bg-white border-b border-slate-200">
-          <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        <header className="sticky top-0 z-20 bg-white/90 border-b border-slate-200/80 backdrop-blur-xl">
+          <div className="px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <button
                 type="button"
@@ -390,6 +391,7 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-7xl w-full mx-auto">
           <Outlet />
         </main>
+        <Footer />
       </div>
     </div>
   );

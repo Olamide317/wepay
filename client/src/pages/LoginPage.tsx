@@ -8,6 +8,7 @@ import { Checkbox, Input } from '../components/ui/FormControls';
 import { AlertBanner } from '../components/ui/StateViews';
 import { useAuth } from '../context/AuthContext';
 import { isValidEmail } from '../utils/formatters';
+import fundingImage from '../assets/images/funding.jpg';
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -55,8 +56,14 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center px-4 py-10">
-      <div className="w-full max-w-md mx-auto space-y-6">
+    <div
+      className="relative min-h-screen flex flex-col justify-center px-4 py-10 bg-cover bg-center overflow-hidden"
+      style={{
+        backgroundImage: `linear-gradient(rgba(248, 250, 252, 0.68), rgba(248, 250, 252, 0.68)), url(${fundingImage})`,
+      }}
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,255,255,0.72),transparent_38%)] pointer-events-none" aria-hidden="true" />
+      <div className="relative w-full max-w-md mx-auto space-y-6">
         <div className="flex flex-col items-center text-center space-y-2">
           <Link to="/" aria-label="Return to WePay Home">
             <WePayLogo size="lg" />
