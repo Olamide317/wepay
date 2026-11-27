@@ -1,0 +1,1444 @@
+# ROLE: Principal Product Designer, Senior UI/UX Engineer & Expert React Frontend Developer
+
+You are a world-class product designer and senior frontend engineer with extensive experience designing and building polished fintech applications, payment platforms, SaaS dashboards, crowdfunding platforms and modern financial products.
+
+You combine the design quality of a leading fintech startup, the usability of an established financial application and the engineering standards of a senior React developer.
+
+Your task is to design and build the complete frontend experience for a Nigerian fintech platform called **WePay**.
+
+This is not an exercise in producing a few attractive mockup screens. You are responsible for creating a cohesive, production-quality frontend prototype with a consistent design system, complete user journeys, reusable components, responsive layouts and functional interactions.
+
+You must think like a product designer, not simply generate disconnected screens.
+
+---
+
+# 1. PRODUCT OVERVIEW
+
+## Product name: WePay
+
+WePay is a collective commerce and group payment platform designed primarily for the Nigerian market.
+
+It helps individuals, student groups, organizers, merchants and communities collect money from multiple contributors without manually sharing personal bank account details or reconciling payment screenshots.
+
+The platform allows an organizer to create a payment collection link and share it with contributors.
+
+Contributors open the link, provide their information and make payments through Interswitch without needing to create an account.
+
+Organizers can subsequently monitor contributions, track payment statuses, manage collections and access transaction records through a dashboard.
+
+The platform operates using Nigerian Naira (NGN).
+
+## Core problem
+
+Traditional group collections and small-scale pre-orders often involve:
+
+- Sharing personal bank account numbers.
+- Manually checking bank alerts.
+- Collecting payment screenshots.
+- Tracking who has paid and who is still owing.
+- Manually calculating how much has been collected.
+- Accidentally accepting payments beyond a target.
+- Overselling limited inventory.
+- Difficulty verifying payment during physical distribution.
+
+WePay addresses these problems through a unified collection engine.
+
+## Product positioning
+
+WePay should feel:
+
+- Trustworthy.
+- Modern.
+- Financially secure.
+- Simple to understand.
+- Fast and convenient.
+- Professional.
+- Accessible to ordinary Nigerian users.
+
+The product should not feel like a generic cryptocurrency dashboard, a complicated banking application or an overly decorative crowdfunding website.
+
+It should look like a serious, modern fintech product.
+
+---
+
+# 2. YOUR PRIMARY OBJECTIVE
+
+Design the entire WePay frontend, covering both sides of the platform:
+
+1. The Organizer Experience.
+2. The Contributor Experience.
+
+Create all the necessary pages, screens, components, modals, forms, tables, navigation elements, empty states, loading states, success states and error states.
+
+The application must have a consistent visual identity across every page.
+
+Do not design only the dashboard.
+
+Do not design only the landing page.
+
+Do not create isolated UI screens without connecting them into realistic user journeys.
+
+The final result should resemble a complete, professionally designed fintech application that could be presented to hackathon judges.
+
+---
+
+# 3. DESIGN DIRECTION AND VISUAL IDENTITY
+
+You have creative freedom to establish the visual identity, but follow these principles.
+
+## Overall aesthetic
+
+Create a premium, contemporary fintech aesthetic.
+
+The interface should be clean, sophisticated, minimal and functional.
+
+Take inspiration from the visual quality and usability of products such as:
+
+- Stripe Dashboard.
+- Linear.
+- Mercury.
+- Wise.
+- Paystack.
+- Modern SaaS financial dashboards.
+
+Use these products as quality references, NOT as templates to copy.
+
+WePay must have its own identity.
+
+## Colour direction
+
+Explore a refined colour system built around:
+
+- Deep navy or charcoal for strong visual elements.
+- A distinctive purple, violet or indigo primary brand colour.
+- White and soft neutral backgrounds.
+- Subtle grey borders and separators.
+- Green for successful payments.
+- Amber for pending payments.
+- Red for failed payments and destructive actions.
+
+The design should feel premium without becoming excessively dark or visually heavy.
+
+Use colours consistently.
+
+## Typography
+
+Use a modern, highly readable sans-serif font.
+
+Typography should establish a clear hierarchy between:
+
+- Page headings.
+- Section headings.
+- Card titles.
+- Supporting descriptions.
+- Form labels.
+- Financial figures.
+- Transaction information.
+
+Financial amounts should be easy to scan.
+
+Use appropriate font weights and spacing.
+
+## UI principles
+
+1. Prioritize clarity over decoration.
+2. Use consistent spacing.
+3. Avoid excessive gradients.
+4. Avoid unnecessary glassmorphism.
+5. Use subtle shadows.
+6. Use rounded corners consistently.
+7. Use meaningful icons.
+8. Keep forms simple.
+9. Make financial information visually prominent.
+10. Ensure mobile usability.
+11. Use clear visual feedback for every important interaction.
+12. Avoid excessive empty space that makes dashboards look unfinished.
+
+## Branding
+
+Create a simple, memorable WePay wordmark treatment.
+
+The logo should be modern, recognizable and appropriate for a fintech product.
+
+You may explore a subtle payment, connection, collection or collaboration-inspired symbol.
+
+Do not use a generic dollar sign as the entire brand identity.
+
+The logo should work on both light and dark backgrounds.
+
+---
+
+# 4. PRODUCT ARCHITECTURE
+
+WePay uses one unified collection engine with three collection modes.
+
+You must understand the differences between them and design the interfaces accordingly.
+
+## MODE 1: POOL — Bill Split & Group Pool
+
+Purpose: Collect money towards a defined financial target.
+
+Example:
+
+Five friends are splitting a ₦75,000 Starlink subscription.
+
+The organizer creates a POOL collection with a target of ₦75,000.
+
+Contributors make payments until the target is reached.
+
+Required interface elements:
+
+- Collection title.
+- Description.
+- Target amount.
+- Amount raised.
+- Amount remaining.
+- Contribution progress bar.
+- Percentage completed.
+- Number of contributors, if available.
+- Contribution amount.
+- Organizer information.
+- Contributor payment form.
+- Collection status.
+
+The collection should visually communicate progress towards the target.
+
+For example:
+
+Target: ₦75,000
+Amount raised: ₦45,000
+Remaining: ₦30,000
+Progress: 60%
+
+Do not hardcode these values into the actual application logic. They are illustrative examples.
+
+## MODE 2: OPEN — Open Collection / Dues
+
+Purpose: Collect contributions without a hard financial target.
+
+Example:
+
+A departmental representative collects dues from students.
+
+The organizer may configure:
+
+- A fixed contribution amount.
+- A minimum contribution amount.
+- An optional deadline.
+- Variable contributions where supported.
+
+Required interface elements:
+
+- Collection title.
+- Description.
+- Organizer information.
+- Contribution amount or minimum amount.
+- Optional deadline.
+- Contributor form.
+- Payment button.
+- Collection status.
+
+Unlike POOL, OPEN collections should not require a target progress bar.
+
+## MODE 3: INVENTORY — Merchant Pre-Order
+
+Purpose: Sell products with limited available stock.
+
+Example:
+
+A baker has 30 boxes of snacks available for pre-order.
+
+Required interface elements:
+
+- Product title.
+- Product description.
+- Unit price.
+- Stock limit.
+- Units sold.
+- Remaining stock.
+- Quantity selector.
+- Contributor information form.
+- Custom fulfillment fields.
+- Total price calculation.
+- Payment button.
+- Availability status.
+
+Example custom fields:
+
+- Hostel Room.
+- Matric Number.
+- Delivery Location.
+
+The interface must communicate stock availability clearly.
+
+Do not allow the interface to imply that unavailable stock can be purchased.
+
+---
+
+# 5. ORGANIZER EXPERIENCE
+
+Design the complete private organizer application.
+
+Organizers must be able to create collections, manage them and monitor payments.
+
+## A. Authentication
+
+Create the following screens:
+
+### Login
+
+Include:
+
+- WePay branding.
+- Welcome heading.
+- Email input.
+- Password input.
+- Show/hide password control.
+- Remember-me option if appropriate.
+- Forgot-password link.
+- Login button.
+- Link to registration.
+- Validation messages.
+- Loading state.
+- Authentication error state.
+
+### Registration
+
+Include:
+
+- Full name.
+- Email.
+- Phone number.
+- Username/handle where required.
+- Password.
+- Confirm password.
+- Terms acceptance.
+- Create account button.
+- Link to login.
+- Validation messages.
+
+Make authentication visually consistent.
+
+Do not invent additional mandatory onboarding requirements.
+
+## B. Organizer dashboard
+
+This is one of the most important parts of the application.
+
+Create a professional dashboard that gives organizers an immediate understanding of their collection activity.
+
+### Navigation
+
+Include:
+
+- Overview.
+- My Collections.
+- Create Collection.
+- Transactions.
+- Account/Profile.
+- Logout.
+
+Use a responsive sidebar on desktop and an appropriate mobile navigation pattern.
+
+### Dashboard header
+
+Include:
+
+- Welcome message.
+- Organizer name.
+- Current date.
+- Create Collection button.
+- Notification icon if useful.
+- Profile menu.
+
+### Summary cards
+
+Display:
+
+1. Total amount collected.
+2. Number of active collections.
+3. Total successful contributions.
+4. Pending transactions.
+
+Use realistic illustrative Nigerian Naira amounts.
+
+Make it clear that these are sample figures in the prototype.
+
+### Collection overview
+
+Display collections in attractive cards or a structured table.
+
+Each collection should show:
+
+- Collection name.
+- Collection mode.
+- Amount raised.
+- Target or stock information where applicable.
+- Number of contributions if available.
+- Collection status.
+- Creation date if available.
+- Action menu.
+
+Use distinct but consistent status indicators:
+
+- ACTIVE.
+- COMPLETED.
+- PAUSED.
+
+### Collection actions
+
+Provide:
+
+- View details.
+- View ledger.
+- Share collection.
+- Pause collection.
+- Resume collection.
+- Close collection where supported.
+
+Use confirmation dialogs for destructive or consequential actions.
+
+### Empty state
+
+Design a useful empty state for a new organizer with no collections.
+
+It should encourage the organizer to create their first collection.
+
+Do not display meaningless placeholder charts or fake activity as if they were genuine user data.
+
+## C. Create Collection
+
+This is a central feature.
+
+Design a polished collection creation experience.
+
+Prefer a clear, structured form rather than an unnecessarily complicated wizard.
+
+### Step 1: Select collection type
+
+Present three attractive selectable cards:
+
+1. Bill Split / Group Pool.
+2. Open Collection / Dues.
+3. Merchant Pre-Order.
+
+Each card should explain what it is used for.
+
+Selecting a card should visually indicate the active selection.
+
+### Step 2: Collection information
+
+Include:
+
+- Collection title.
+- Description.
+- Collection type.
+- Relevant pricing configuration.
+
+### Step 3: Pricing configuration
+
+Show fields dynamically based on collection type.
+
+For POOL:
+- Pricing rule.
+- Contribution amount, if applicable.
+- Target amount.
+- Fee handling.
+
+For OPEN:
+- Pricing rule.
+- Fixed amount or minimum amount.
+- Optional deadline.
+- Fee handling.
+
+For INVENTORY:
+- Product price.
+- Stock limit.
+- Quantity-related configuration.
+- Custom fulfillment fields.
+- Fee handling.
+
+### Step 4: Additional settings
+
+Include:
+
+- Custom fields where supported.
+- Optional expiry/deadline.
+- Fee handling selection:
+  - Organizer absorbs processing fee.
+  - Contributor pays processing fee.
+
+### Step 5: Review and create
+
+Show a summary of the configured collection before submission.
+
+Include:
+
+- Collection name.
+- Type.
+- Pricing.
+- Target or stock settings.
+- Fee handling.
+- Other relevant information.
+
+Provide a clear Create Collection button.
+
+### Success state
+
+After successful creation, show:
+
+- Confirmation message.
+- Collection name.
+- Public collection URL.
+- Copy Link button.
+- Share action.
+- View Collection button.
+
+Do not assume that a specific URL or slug exists until the backend returns it.
+
+## D. Collection details and ledger
+
+Create a dedicated collection details experience.
+
+Display:
+
+- Collection title.
+- Collection type.
+- Collection status.
+- Amount raised.
+- Target amount or stock remaining.
+- Progress indicator where relevant.
+- Collection link.
+- Share action.
+
+### Transaction ledger
+
+Create a professional transaction table.
+
+Columns should include:
+
+- Contributor name.
+- Email.
+- Phone.
+- Transaction reference.
+- Amount contributed.
+- Processing fee.
+- Total paid.
+- Quantity where relevant.
+- Payment status.
+- Payment date.
+
+Payment statuses:
+
+- SUCCESS.
+- PENDING.
+- FAILED.
+
+Use visually distinguishable status badges.
+
+Include:
+
+- Search.
+- Basic filtering if practical.
+- Refresh action.
+- CSV export button.
+- Empty state.
+- Loading state.
+
+On mobile, make the ledger usable through horizontal scrolling or a responsive transaction-card layout.
+
+### Share Collection modal
+
+When the organizer selects Share:
+
+Display:
+
+- Collection title.
+- Public URL.
+- Copy Link button.
+- QR code for the public collection link if practical.
+- Share options using native browser sharing where supported.
+
+Provide visual confirmation when the link is copied.
+
+---
+
+# 6. CONTRIBUTOR EXPERIENCE
+
+The contributor experience is equally important.
+
+Contributors do not need to register or log in.
+
+They arrive through a shared public collection link.
+
+This experience must be mobile-first.
+
+Avoid unnecessary navigation and distractions.
+
+The contributor should understand what they are paying for immediately.
+
+## A. Public collection page
+
+Route concept:
+
+/c/:slug
+
+Create a complete public collection page.
+
+### Header
+
+Include:
+
+- WePay branding.
+- Secure payment indication.
+- Organizer verification indicator where supported.
+
+### Collection information
+
+Display:
+
+- Collection title.
+- Description.
+- Organizer name.
+- Collection type.
+- Amount required.
+- Target amount or remaining stock where relevant.
+- Collection status.
+
+### POOL-specific interface
+
+Display:
+
+- Target amount.
+- Amount raised.
+- Remaining amount.
+- Percentage completed.
+- Progress bar.
+- Contribution amount.
+
+### OPEN-specific interface
+
+Display:
+
+- Fixed contribution or minimum amount.
+- Optional deadline.
+- Simple contribution information.
+
+### INVENTORY-specific interface
+
+Display:
+
+- Product name.
+- Unit price.
+- Available stock.
+- Quantity selector.
+- Custom fulfillment questions.
+
+### Contributor form
+
+Include:
+
+- Full name.
+- Email address.
+- Phone number.
+- Dynamic custom fields returned by the collection.
+
+Ensure appropriate validation.
+
+### Payment summary
+
+Show:
+
+- Contribution amount.
+- Quantity where applicable.
+- Processing fee.
+- Total payable amount.
+
+The fee calculation must ultimately follow the backend's rules.
+
+Do not invent a processing fee percentage.
+
+### Payment button
+
+Use a clear, prominent CTA.
+
+Examples:
+
+- Contribute Now.
+- Pay Now.
+- Complete Payment.
+
+Show a loading state during payment initialization.
+
+Prevent repeated submissions while a payment request is processing.
+
+### Error and availability states
+
+Design states for:
+
+- Invalid collection link.
+- Collection paused.
+- Collection completed.
+- Target reached.
+- Stock unavailable.
+- Invalid contributor information.
+- Payment initialization failure.
+
+The interface must not encourage payment when a collection is no longer available.
+
+---
+
+# 7. INTERSWITCH PAYMENT EXPERIENCE
+
+WePay uses Interswitch Web/Inline Checkout.
+
+The intended flow is:
+
+1. Contributor fills in their details.
+2. Frontend sends payment initialization request to backend.
+3. Backend validates availability.
+4. Backend creates a pending transaction.
+5. Backend returns the checkout parameters.
+6. Frontend initializes Interswitch checkout.
+7. Contributor completes payment.
+8. Backend receives the Interswitch webhook.
+9. Backend verifies payment through transaction requery.
+10. Backend updates the transaction status.
+11. Frontend retrieves the verified payment result.
+
+The initialization parameters documented include:
+
+- txnRef.
+- amount.
+- merchantCode.
+- payItemId.
+
+Design the appropriate checkout, loading, pending, success and failure states.
+
+IMPORTANT:
+
+Do not assume a frontend checkout callback independently proves that payment succeeded.
+
+The backend is the source of truth for payment verification.
+
+Do not invent merchant credentials, private payment keys, SDK configuration or undocumented Interswitch callback structures.
+
+If actual credentials and SDK integration details are unavailable, create a clearly labelled sandbox/mock checkout experience for UI demonstration.
+
+Never represent a simulated payment as a real verified payment.
+
+---
+
+# 8. DIGITAL RECEIPT EXPERIENCE
+
+Create a premium digital receipt page.
+
+Route concept:
+
+/receipt/:code
+
+The receipt should be simple, professional and easy to understand.
+
+Include:
+
+- WePay branding.
+- Payment success indicator.
+- Receipt code.
+- Transaction reference.
+- Contributor name.
+- Contributor email.
+- Contributor phone where available.
+- Collection name.
+- Amount contributed.
+- Processing fee.
+- Total paid.
+- Quantity where applicable.
+- Payment date.
+- Unique receiptHash if returned by the backend.
+- QR code.
+
+### QR code
+
+Generate the QR code using a React-compatible QR library.
+
+The encoded value should be the agreed receipt verification URL or receipt identifier.
+
+Do not invent a verification URL or claim that a QR code has been verified simply because it was generated.
+
+### Receipt actions
+
+Include:
+
+- Print Receipt.
+- Download Receipt if implemented reliably.
+- Return to Collection or relevant navigation.
+
+Design a print-friendly layout without unnecessary navigation elements.
+
+Also design:
+
+- Receipt loading state.
+- Invalid receipt state.
+- Pending payment state.
+- Failed payment state.
+
+---
+
+# 9. REQUIRED PAGES AND ROUTES
+
+Implement the following route structure, adjusting only where technically necessary:
+
+PUBLIC ROUTES:
+
+/login
+/register
+/c/:slug
+/receipt/:code
+
+ORGANIZER ROUTES:
+
+/dashboard
+/dashboard/create
+/dashboard/collections/:id
+/dashboard/collections/:id/ledger
+
+These routes are proposed frontend routes. The backend API routes must remain consistent with the project specification.
+
+If necessary, create additional reusable components without introducing unnecessary pages.
+
+---
+
+# 10. COMPLETE DESIGN SYSTEM
+
+Create a consistent design system before building individual screens.
+
+Define:
+
+## Colour tokens
+
+- Primary brand colour.
+- Primary hover colour.
+- Main background.
+- Secondary background.
+- Surface/card colour.
+- Primary text.
+- Secondary text.
+- Border colour.
+- Success colour.
+- Warning colour.
+- Error colour.
+
+## Typography tokens
+
+Define heading sizes, body sizes, labels and financial figure styles.
+
+## Spacing system
+
+Use consistent spacing between:
+
+- Page sections.
+- Cards.
+- Form elements.
+- Buttons.
+- Tables.
+- Navigation items.
+
+## Component library
+
+Create reusable components for:
+
+- Buttons.
+- Input fields.
+- Select fields.
+- Textareas.
+- Checkboxes.
+- Status badges.
+- Cards.
+- Modal dialogs.
+- Progress bars.
+- Tables.
+- Navigation.
+- Sidebars.
+- Loading indicators.
+- Empty states.
+- Error states.
+- Success notifications.
+
+Use consistent hover, focus, disabled and loading states.
+
+---
+
+# 11. RESPONSIVE DESIGN
+
+The application must work well on:
+
+- Mobile phones.
+- Tablets.
+- Desktop computers.
+
+Use mobile-first responsive design.
+
+Pay special attention to the public contributor experience.
+
+Requirements:
+
+1. No horizontal overflow on mobile.
+2. Forms must fit mobile screens.
+3. Buttons must be comfortably tappable.
+4. Financial figures must remain readable.
+5. Dashboard cards must reorganize intelligently.
+6. Tables must remain usable.
+7. Sidebar navigation must adapt to smaller screens.
+8. Modals must fit smaller viewports.
+9. Checkout must remain simple and focused.
+10. Receipt must remain readable on mobile.
+
+Test at approximately:
+
+- 375px.
+- 390px.
+- 768px.
+- 1024px.
+- 1440px.
+
+---
+
+# 12. FUNCTIONAL REQUIREMENTS
+
+Do not produce a static visual mockup.
+
+Build functional frontend interactions.
+
+The following must work in the prototype:
+
+- Navigation between pages.
+- Login form validation.
+- Registration form validation.
+- Dashboard navigation.
+- Selecting collection types.
+- Dynamic collection creation fields.
+- Collection form validation.
+- Collection review.
+- Collection success state.
+- Share modal.
+- Copy collection link.
+- Public collection page.
+- Dynamic collection information.
+- Contributor form validation.
+- Amount calculations based on configured values.
+- Quantity selection for inventory.
+- Payment initialization interface.
+- Checkout loading state.
+- Simulated payment flow when actual credentials are unavailable.
+- Payment success and failure screens.
+- Receipt display.
+- QR code generation.
+- Print receipt.
+- Dashboard transaction table.
+- Basic ledger filtering.
+- CSV export where feasible.
+
+Use mock data where the backend is unavailable.
+
+Keep mock data separate from actual API service logic.
+
+Do not pretend mock operations are connected to the production backend.
+
+---
+
+# 13. TECHNICAL IMPLEMENTATION
+
+The intended frontend technology stack is:
+
+- React.
+- Vite.
+- JavaScript.
+- Tailwind CSS.
+
+Recommended libraries:
+
+- React Router DOM for routing.
+- Lucide React for icons.
+- qrcode.react for QR code generation.
+
+Use native Fetch API for backend requests unless there is a strong reason to introduce another dependency.
+
+Avoid unnecessary dependencies.
+
+## Architecture
+
+Organize the application into sensible folders:
+
+src/
+  components/
+  pages/
+  layouts/
+  services/
+  context/
+  utils/
+  assets/
+
+Separate reusable components from full pages.
+
+Use React state appropriately.
+
+Use props for component communication.
+
+Use useEffect for data-fetching side effects.
+
+Use React Context only where shared application state is genuinely needed.
+
+Do not overengineer the project.
+
+## Backend integration
+
+The documented API endpoints are:
+
+AUTHENTICATION:
+
+POST /api/auth/register
+POST /api/auth/login
+POST /api/profile/bank
+
+COLLECTION MANAGEMENT:
+
+POST /api/collections
+GET /api/collections
+GET /api/collections/:id/ledger
+PATCH /api/collections/:id/status
+
+PUBLIC COLLECTIONS:
+
+GET /api/public/c/:slug
+GET /api/public/u/:handle
+
+PAYMENTS:
+
+POST /api/payments/initialize
+GET /api/payments/receipt/:receiptCode
+
+The webhook endpoint:
+
+POST /api/payments/webhook
+
+is a backend server-to-server endpoint. Do not call it from the browser.
+
+The backend team is responsible for JWT authentication, transaction creation, payment verification, webhooks, inventory locking and database updates.
+
+Important:
+
+The API documentation specifies endpoint purposes and selected data fields, but not every complete request and response structure.
+
+Do not fabricate official API contracts.
+
+Where a structure is unknown:
+
+- Use clearly labelled mock data.
+- Keep API integration modular.
+- Mark the assumption.
+- Identify what needs backend confirmation.
+
+Use environment variables for the API base URL.
+
+Do not expose private credentials in frontend code.
+
+---
+
+# 14. DATA MODELS
+
+Use the following documented data structures as the conceptual basis of the UI.
+
+## Organizer
+
+- _id
+- fullName
+- email
+- phone
+- handle
+- settlementBank
+- createdAt
+
+## Collection
+
+- _id
+- organizerId
+- slug
+- type
+- title
+- description
+- currency
+- pricingRule
+- amount
+- targetAmount
+- amountRaised
+- stockLimit
+- stockSold
+- passFeeToPayer
+- customFields
+- status
+- expiresAt
+- createdAt
+
+## Transaction
+
+- _id
+- collectionId
+- txnRef
+- interswitchRef
+- contributorName
+- contributorEmail
+- contributorPhone
+- quantity
+- baseAmount
+- feeAmount
+- totalPaid
+- customResponses
+- receiptCode
+- status
+- paidAt
+
+Use Nigerian Naira formatting throughout.
+
+For example:
+
+₦75,000.00
+
+Use realistic sample information for prototype demonstrations, but clearly distinguish sample information from actual backend data.
+
+---
+
+# 15. IMPLEMENTATION PRIORITIES
+
+The project has a very tight hackathon deadline.
+
+Prioritize the following milestones.
+
+## PRIORITY 1: CORE MVP
+
+Must be implemented first:
+
+- Login and registration.
+- Organizer dashboard.
+- POOL collection creation.
+- OPEN collection creation.
+- Public collection page.
+- Contributor form.
+- Payment initialization.
+- Interswitch checkout integration point.
+- Transaction ledger.
+- Share collection functionality.
+
+## PRIORITY 2: IMPORTANT FEATURES
+
+Implement next:
+
+- INVENTORY collection mode.
+- Stock limit interface.
+- Custom contributor fields.
+- Digital receipt.
+- QR code generation.
+- CSV export.
+
+## PRIORITY 3: OPTIONAL FEATURES
+
+Only implement after the core experience is functional:
+
+- Organizer public hub.
+- Advanced analytics.
+- Automated payouts.
+- Escrow.
+- Refund workflows.
+- Elaborate animations.
+- Advanced filtering.
+
+Do not sacrifice core functionality for visual decoration.
+
+---
+
+# 16. DEMONSTRATION SCENARIOS
+
+Design the application around two realistic demonstration scenarios.
+
+## Scenario A: Starlink Bill Split
+
+An organizer creates a POOL collection:
+
+Title: November Starlink Subscription
+
+Target: ₦75,000
+
+Amount raised: ₦45,000
+
+Remaining: ₦30,000
+
+A contributor opens the link, enters their details, contributes money and completes a sandbox payment.
+
+The organizer subsequently sees the transaction in the dashboard.
+
+The public collection progress reflects backend-confirmed collection totals.
+
+## Scenario B: Student Snack Pre-Order
+
+A merchant creates an INVENTORY collection:
+
+Product: Snack Box
+
+Unit price: ₦2,500
+
+Stock limit: 30
+
+A contributor opens the link, selects two units and enters:
+
+- Full name.
+- Email.
+- Phone.
+- Hostel room.
+
+The checkout summary reflects the selected quantity and applicable fees.
+
+After a verified payment, the backend updates the transaction and stock.
+
+The organizer can inspect the transaction in the ledger.
+
+These are sample demonstration scenarios, not additional API specifications.
+
+---
+
+# 17. QUALITY EXPECTATIONS
+
+The final application must satisfy these standards:
+
+## Design quality
+
+- Cohesive visual identity.
+- Consistent spacing.
+- Professional typography.
+- Strong visual hierarchy.
+- Clear financial information.
+- No unfinished-looking screens.
+- No random colour choices.
+- No inconsistent components.
+
+## Functional quality
+
+- Buttons perform their advertised actions.
+- Forms validate input.
+- Navigation works.
+- Modals open and close correctly.
+- Loading states are visible.
+- Errors are handled.
+- Mock data is clearly separated from backend data.
+- Dynamic fields respond correctly to collection type.
+
+## Engineering quality
+
+- Reusable React components.
+- Clean folder structure.
+- No unnecessary dependencies.
+- No duplicated implementation where reusable components are appropriate.
+- No broken imports.
+- No console errors.
+- Responsive layouts.
+- Maintainable code.
+
+## Accessibility
+
+- Appropriate input labels.
+- Keyboard-accessible controls.
+- Visible focus states.
+- Sufficient colour contrast.
+- Meaningful button labels.
+- Accessible validation feedback.
+
+---
+
+# 18. HOW YOU SHOULD EXECUTE THIS TASK
+
+Do not rush into generating random screens.
+
+Work systematically.
+
+FIRST:
+
+Understand the product and establish the visual design system.
+
+SECOND:
+
+Create the complete application structure and navigation.
+
+THIRD:
+
+Build the organizer experience.
+
+FOURTH:
+
+Build the public contributor experience.
+
+FIFTH:
+
+Implement payment and receipt experiences.
+
+SIXTH:
+
+Connect the interactions and mock data.
+
+SEVENTH:
+
+Review responsiveness and visual consistency.
+
+EIGHTH:
+
+Test the entire application using the two demonstration scenarios.
+
+Do not stop after creating the dashboard.
+
+Do not leave the contributor experience incomplete.
+
+Do not create a beautiful but non-functional collection form.
+
+Do not generate disconnected pages with inconsistent layouts.
+
+---
+
+# 19. FINAL DELIVERABLE
+
+I expect a complete WePay frontend prototype with:
+
+1. A distinct WePay visual identity.
+2. A consistent design system.
+3. Complete organizer authentication screens.
+4. A professional organizer dashboard.
+5. Collection creation for all three collection modes.
+6. Collection details and management.
+7. A transaction ledger.
+8. A share collection modal.
+9. Public contributor checkout pages.
+10. Interswitch checkout integration points.
+11. Digital receipts with QR codes.
+12. Responsive layouts.
+13. Functional navigation.
+14. Working interface interactions.
+15. Mock data for unavailable backend functionality.
+16. Clear separation between mock operations and real integrations.
+
+The final product should be impressive enough to demonstrate to hackathon judges and structured well enough for a junior React developer to continue working on it.
+
+# 20. MOST IMPORTANT INSTRUCTION
+
+Think beyond individual screens.
+
+Think about the entire product.
+
+If an organizer creates a collection, the collection should have a logical place in the dashboard.
+
+If that collection is shared, the public link should open the correct contributor experience.
+
+If a contributor completes the form, the payment initialization flow should be represented correctly.
+
+If payment is verified by the backend, the receipt should display the corresponding transaction.
+
+If the organizer returns to the dashboard, the transaction should be reflected in the ledger once the backend data is refreshed.
+
+Every part of the application should feel like it belongs to the same product.
+
+**Build WePay as one cohesive fintech experience, not a collection of unrelated UI designs.**
+
+Make intelligent design decisions where the documentation leaves visual details open, but never invent technical backend contracts or claim that simulated payments are real.
+
+Your final objective is to deliver a polished, coherent, responsive and interactive WePay frontend that demonstrates the complete core product experience
+
+# 21. FINAL DELIVERY FORMAT — DOWNLOADABLE ZIP FILE (MANDATORY)
+
+This requirement is extremely important.
+
+I do not want the final application to exist only inside Google AI Studio's preview environment.
+
+I want the complete, functional WePay frontend project packaged into a downloadable ZIP archive that I can save to my Windows PC, extract and run locally using VS Code.
+
+## Required deliverable
+
+Generate a downloadable file named:
+
+**WePay-Frontend.zip**
+
+The ZIP archive must contain the COMPLETE project, including:
+
+- All React components.
+- All application pages.
+- All layouts.
+- All CSS and Tailwind configuration.
+- All JavaScript files.
+- All assets and images used by the application.
+- All icons and locally stored resources.
+- All routing configuration.
+- All mock data.
+- All API service files.
+- All utility functions.
+- package.json.
+- package-lock.json, if available.
+- Vite configuration.
+- Environment variable example file (.env.example).
+- README.md.
+
+## Required folder structure
+
+Organize the extracted project sensibly, for example:
+
+WePay-Frontend/
+  public/
+  src/
+    assets/
+    components/
+    context/
+    layouts/
+    pages/
+    services/
+    utils/
+    App.jsx
+    main.jsx
+    index.css
+  .env.example
+  .gitignore
+  index.html
+  package.json
+  package-lock.json
+  vite.config.js
+  README.md
+
+You may adjust the structure where necessary, but include every file required to run the application.
+
+## Local installation instructions
+
+Include a detailed README.md explaining:
+
+1. Required software (Node.js and VS Code).
+2. How to extract the ZIP archive.
+3. How to open the extracted folder in VS Code.
+4. How to install dependencies.
+5. How to configure environment variables.
+6. How to start the development server.
+7. How to access the application in a browser.
+8. How to configure the backend API URL.
+9. Which features currently use mock data.
+10. How to replace mock integrations with the actual backend APIs.
+
+The instructions must be beginner-friendly.
+
+The expected local setup should be approximately:
+
+```bash
+npm install
+npm run dev
+```
+
+## Important packaging requirements
+
+- Do not include node_modules in the ZIP archive.
+- Do not omit files because they were generated in separate steps.
+- Do not include broken or incomplete imports.
+- Do not reference assets that are unavailable in the archive.
+- Do not include private credentials, API secrets or payment keys.
+- Ensure the package.json contains all necessary dependencies.
+- Ensure the application can run independently of Google AI Studio.
+- Preserve all application functionality and styling when exported.
+- Ensure the ZIP contains the actual source code, not screenshots or a static HTML preview.
