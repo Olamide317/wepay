@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Collection = require('../models/Collection');
 const Transaction = require('../models/Transaction');
+const { sendPaymentReceiptEmail } = require('../services/emailService');
 
 const getIswConfig = () => {
   const configuredMode = String(process.env.ISW_MODE || 'TEST').trim().toUpperCase();
@@ -51,6 +52,24 @@ const isVerifiedInterswitchPayment = (response, expectedAmountKobo) =>
   Number.isFinite(Number(response.Amount)) &&
   Number(response.Amount) === Number(expectedAmountKobo);
 
+const notifyReceiptEmail = (transaction, collection) => {
+  if (!transaction.contributorEmail) return;
+  void Promise.resolve()
+    .then(() =>
+      sendPaymentReceiptEmail({
+        payerName: transaction.payerName || transaction.contributorName,
+        payerEmail: transaction.contributorEmail,
+        collectionTitle: collection?.title,
+        amountPaid: transaction.totalPaid,
+        receiptCode: transaction.receiptCode,
+        txnRef: transaction.txnRef,
+        quantity: transaction.quantity,
+        paidAt: transaction.paidAt,
+      })
+    )
+    .catch((error) => console.error('[Brevo Receipt Error]:', error.message));
+};
+
 const formatTransactionResponse = (tx, collection) => ({
   _id: tx._id,
   collectionId: collection?._id || tx.collectionId,
@@ -79,10 +98,14 @@ const formatTransactionResponse = (tx, collection) => ({
 const settleTransactionSuccess = async (tx, interswitchRef) => {
   const session = await mongoose.startSession();
   let settledTransaction = tx;
+  let settledCollection = null;
+  let newlySettled = false;
   let transactionFailed = false;
 
   try {
     await session.withTransaction(async () => {
+      newlySettled = false;
+      settledCollection = null;
       const currentTx = await Transaction.findOne({ txnRef: tx.txnRef }).session(session);
       if (!currentTx || currentTx.status === 'SUCCESS' || currentTx.status === 'FAILED') {
         settledTransaction = currentTx || tx;
@@ -94,6 +117,7 @@ const settleTransactionSuccess = async (tx, interswitchRef) => {
         settledTransaction = currentTx;
         return;
       }
+      settledCollection = collection;
 
       const qty = Math.max(1, Number(currentTx.quantity) || 1);
       let updatedCol = null;
@@ -167,6 +191,7 @@ const settleTransactionSuccess = async (tx, interswitchRef) => {
       currentTx.paidAt = now;
       currentTx.verifiedAt = now;
       await currentTx.save({ session });
+      newlySettled = true;
 
       if (updatedCol && Array.isArray(updatedCol.expectedPayers) && updatedCol.expectedPayers.length > 0) {
         const targetName = currentTx.contributorName.toLowerCase().trim();
@@ -184,7 +209,11 @@ const settleTransactionSuccess = async (tx, interswitchRef) => {
       settledTransaction = currentTx;
     });
 
-    return settledTransaction;
+    return {
+      transaction: settledTransaction,
+      collection: settledCollection,
+      newlySettled,
+    };
   } catch (error) {
     transactionFailed = true;
     try {
@@ -387,7 +416,11 @@ exports.verifyPayment = async (req, res) => {
     if (isApproved) {
       const ref =
         iswData?.PaymentReference || iswData?.RetrievalReferenceNumber || `ISW-QA-${Date.now()}`;
-      tx = await settleTransactionSuccess(tx, ref);
+      const settlement = await settleTransactionSuccess(tx, ref);
+      tx = settlement.transaction;
+      if (settlement.newlySettled) {
+        notifyReceiptEmail(tx, settlement.collection);
+      }
     } else if (iswData && iswData.ResponseCode && iswData.ResponseCode !== '09') {
       await Transaction.updateOne(
         { _id: tx._id, status: 'PENDING' },
@@ -448,7 +481,11 @@ exports.handleWebhook = async (req, res) => {
       if (isVerifiedInterswitchPayment(iswData, amountKobo)) {
         const ref =
           iswData.PaymentReference || iswData.RetrievalReferenceNumber || `ISW-WH-${Date.now()}`;
-        tx = await settleTransactionSuccess(tx, ref);
+        const settlement = await settleTransactionSuccess(tx, ref);
+        tx = settlement.transaction;
+        if (settlement.newlySettled) {
+          notifyReceiptEmail(tx, settlement.collection);
+        }
       }
     }
 

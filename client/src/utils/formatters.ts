@@ -115,7 +115,22 @@ export function slugify(text: string): string {
 }
 
 export function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+}
+
+export function suggestEmailCorrection(email: string): string | undefined {
+  const [localPart, domain, ...extra] = email.trim().split('@');
+  if (!localPart || !domain || extra.length > 0) return undefined;
+
+  const corrections: Record<string, string> = {
+    'gmial.com': 'gmail.com',
+    'gmal.com': 'gmail.com',
+    'gmail.co': 'gmail.com',
+    'yaho.com': 'yahoo.com',
+    'hotmal.com': 'hotmail.com',
+  };
+  const correctedDomain = corrections[domain.toLowerCase()];
+  return correctedDomain ? `${localPart}@${correctedDomain}` : undefined;
 }
 
 export function isValidNigerianPhone(phone: string): boolean {
