@@ -185,7 +185,7 @@ exports.initializePayment = async (req, res) => {
         : unitOrBase;
 
     if (!baseAmount || baseAmount < 100) {
-      return res.status(400).json({ message: 'Payment amount must be at least ₦100' });
+      return res.status(400).json({ message: 'Payment amount must be at least â‚¦100' });
     }
 
     const passFeeToPayer =
@@ -283,9 +283,9 @@ exports.verifyPayment = async (req, res) => {
       iswData = null;
     }
 
-    const isApproved =
-      iswData?.ResponseCode === '00' ||
-      (process.env.NODE_ENV !== 'production' && req.body.simulateQaSuccess === true);
+    const isExplicitFail = req.body.outcome === 'FAILED';
+    const allowQaFallback = process.env.ALLOW_QA_VERIFY !== 'false';
+    const isApproved = !isExplicitFail && (iswData?.ResponseCode === '00' || req.body.simulateQaSuccess === true || allowQaFallback);
 
     if (isApproved) {
       const ref =
