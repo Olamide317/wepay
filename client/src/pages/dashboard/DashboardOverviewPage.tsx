@@ -122,7 +122,7 @@ export const DashboardOverviewPage: React.FC = () => {
       {/* Page Heading */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200/80 pb-5">
         <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-indigo-600">Workspace</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Workspace</p>
           <h1 className="font-display text-2xl sm:text-[28px] font-bold tracking-tight text-slate-950">Dashboard</h1>
           <p className="text-sm text-slate-600 mt-1">
             Monitor collection totals, active links, and incoming contributor payments.
@@ -153,7 +153,7 @@ export const DashboardOverviewPage: React.FC = () => {
       {/* Summary Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <Card padding="md" className="relative overflow-hidden">
-          <div className="absolute left-0 top-5 h-8 w-1 rounded-r-full bg-indigo-500" aria-hidden="true" />
+          <div className="absolute left-0 top-5 h-8 w-1 rounded-r-full bg-teal-600" aria-hidden="true" />
           <p className="text-xs font-medium text-slate-500">
             Total Amount Collected
           </p>
@@ -175,7 +175,7 @@ export const DashboardOverviewPage: React.FC = () => {
 
         <Card padding="md">
           <p className="text-xs font-medium text-slate-500">Successful Contributions</p>
-          <p className="text-2xl font-bold font-mono-num text-emerald-700 mt-2">
+          <p className="text-2xl font-bold font-mono-num text-teal-700 mt-2">
             {loading ? '—' : successTxCount}
           </p>
           <p className="text-xs text-slate-500 mt-1.5">Verified payments recorded</p>
@@ -183,7 +183,7 @@ export const DashboardOverviewPage: React.FC = () => {
 
         <Card padding="md">
           <p className="text-xs font-medium text-slate-500">Pending Transactions</p>
-          <p className="text-2xl font-bold font-mono-num text-amber-700 mt-2">
+          <p className="text-2xl font-bold font-mono-num text-[#92400e] mt-2">
             {loading ? '—' : pendingTxCount}
           </p>
           <p className="text-xs text-slate-500 mt-1.5">Awaiting confirmation</p>
@@ -196,7 +196,7 @@ export const DashboardOverviewPage: React.FC = () => {
           <h2 className="font-display text-lg font-semibold text-slate-900">Your Collections</h2>
           <Link
             to="/dashboard/collections"
-            className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1"
+            className="text-xs font-semibold text-teal-700 hover:text-teal-800 inline-flex items-center gap-1"
           >
             <span>View all</span>
             <ArrowUpRight className="h-3.5 w-3.5" />
@@ -216,7 +216,7 @@ export const DashboardOverviewPage: React.FC = () => {
             onAction={() => navigate('/dashboard/create')}
           />
         ) : (
-          <div className="bg-white border border-slate-200 rounded-xl overflow-visible">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-visible shadow-lg shadow-slate-900/15">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -247,13 +247,13 @@ export const DashboardOverviewPage: React.FC = () => {
                         <td className="py-3.5 px-4">
                           <Link
                             to={`/dashboard/collections/${col._id}`}
-                            className="font-semibold text-slate-900 hover:text-indigo-600 transition-colors block"
+                            className="font-semibold text-slate-900 hover:text-teal-700 transition-colors block"
                           >
                             {col.title}
                           </Link>
                           <Link
                             to={`/c/${col.slug}`}
-                            className="text-xs text-slate-500 hover:text-indigo-600 inline-flex items-center gap-1 mt-0.5 font-mono-num"
+                            className="text-xs text-slate-500 hover:text-teal-700 inline-flex items-center gap-1 mt-0.5 font-mono-num"
                           >
                             <span>/c/{col.slug}</span>
                             <ExternalLink className="h-3 w-3" />
@@ -348,7 +348,7 @@ export const DashboardOverviewPage: React.FC = () => {
                                   <button
                                     type="button"
                                     onClick={() => openStatusConfirm(col, 'PAUSED')}
-                                    className="w-full text-left px-3.5 py-2 text-xs text-amber-700 hover:bg-amber-50 flex items-center gap-2 cursor-pointer"
+                                    className="w-full text-left px-3.5 py-2 text-xs text-[#92400e] hover:bg-[#f59e08]/10 flex items-center gap-2 cursor-pointer"
                                   >
                                     <PauseCircle className="h-3.5 w-3.5" />
                                     <span>Pause collection</span>
@@ -358,7 +358,7 @@ export const DashboardOverviewPage: React.FC = () => {
                                   <button
                                     type="button"
                                     onClick={() => openStatusConfirm(col, 'ACTIVE')}
-                                    className="w-full text-left px-3.5 py-2 text-xs text-emerald-700 hover:bg-emerald-50 flex items-center gap-2 cursor-pointer"
+                                    className="w-full text-left px-3.5 py-2 text-xs text-teal-700 hover:bg-teal-50 flex items-center gap-2 cursor-pointer"
                                   >
                                     <PlayCircle className="h-3.5 w-3.5" />
                                     <span>Resume collection</span>

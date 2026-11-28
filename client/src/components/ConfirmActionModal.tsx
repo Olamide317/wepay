@@ -30,7 +30,7 @@ export const ConfirmActionModal: React.FC<ConfirmActionModalProps> = ({
         <div className="flex items-start gap-3">
           <div
             className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
-              variant === 'danger' ? 'bg-red-50 text-red-600' : 'bg-indigo-50 text-indigo-600'
+              variant === 'danger' ? 'bg-red-50 text-red-600' : 'bg-teal-50 text-teal-700'
             }`}
           >
             <AlertTriangle className="h-5 w-5" aria-hidden="true" />

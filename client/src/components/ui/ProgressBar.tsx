@@ -14,10 +14,10 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   const clamped = Math.min(100, Math.max(0, value));
   const barColor =
     tone === 'success' || clamped >= 100
-      ? 'bg-emerald-600'
+      ? 'bg-teal-600'
       : tone === 'warning'
-      ? 'bg-amber-500'
-      : 'bg-indigo-600';
+      ? 'bg-[#f59e08]'
+      : 'bg-teal-600';
 
   const hClass = height === 'sm' ? 'h-1.5' : 'h-2.5';
 
@@ -30,7 +30,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
       aria-valuemax={100}
     >
       <div
-        className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+        className={`h-full rounded-full transition-[width] duration-200 ${barColor}`}
         style={{ width: `${clamped}%` }}
       />
     </div>

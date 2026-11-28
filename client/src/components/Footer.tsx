@@ -8,17 +8,8 @@ export const Footer: React.FC = () => {
   const { isAuthenticated } = useAuth();
 
   return (
-    <footer className="no-print relative overflow-hidden border-t border-indigo-400/10 bg-slate-950 text-white">
-      <div
-        className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-indigo-600/20 blur-3xl"
-        aria-hidden="true"
-      />
-      <div
-        className="absolute -bottom-32 left-1/3 h-56 w-56 rounded-full bg-violet-500/10 blur-3xl"
-        aria-hidden="true"
-      />
-
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-9 sm:py-10">
+    <footer className="no-print border-t border-slate-800 bg-slate-950 text-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-9 sm:py-10">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[minmax(280px,1.6fr)_0.8fr_0.8fr] lg:gap-12">
           <div className="space-y-4">
             <Link to="/" aria-label="WePay Home">
@@ -27,7 +18,7 @@ export const Footer: React.FC = () => {
             <p className="max-w-sm text-sm leading-6 text-slate-300">
               Collective commerce, group payments, and verified receipts — organized in one place.
             </p>
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/[0.07] px-3 py-1.5 text-xs font-medium text-emerald-300">
+            <div className="inline-flex items-center gap-2 rounded-full border border-teal-400/20 bg-teal-400/[0.07] px-3 py-1.5 text-xs font-medium text-teal-300">
               <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Secured payments via Interswitch</span>
             </div>
@@ -67,7 +58,7 @@ export const Footer: React.FC = () => {
           </nav>
         </div>
 
-        <div className="mt-8 pt-5 border-t border-white/10 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-xs text-slate-400">
+        <div className="mt-8 pt-5 border-t border-slate-800 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-xs text-slate-400">
           <p>© {new Date().getFullYear()} WePay. All rights reserved.</p>
           <p>Nigerian Naira (NGN) · Built for collective payments</p>
         </div>

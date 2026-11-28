@@ -39,7 +39,7 @@ interface OrganizerLayoutProps {
 export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = true }) => {
   const { organizer, isAuthenticated, isNewUser, isLoading, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const navigate = useNavigate();
@@ -48,7 +48,7 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
 
   if (requireAuth && isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
         <div className="text-sm text-slate-600 font-medium">Loading organizer workspace...</div>
       </div>
     );
@@ -66,7 +66,7 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-[background-color,color,transform] duration-150 whitespace-nowrap ${
       isActive
-        ? 'bg-indigo-50 text-indigo-700 shadow-[inset_0_0_0_1px_rgba(199,210,254,0.55)]'
+        ? 'bg-teal-50 text-teal-800'
         : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-950'
     }`;
 
@@ -74,11 +74,11 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
     <div className="min-h-screen bg-slate-50 flex">
       {/* Desktop Sidebar */}
       <aside
-        className={`hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 bg-white/95 border-r border-slate-200/80 z-30 backdrop-blur-xl transition-[width] duration-200 ${
+        className={`desktop-sidebar hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 bg-white border-r border-slate-200 z-30 ${
           desktopSidebarOpen ? 'lg:w-64' : 'lg:w-0 overflow-hidden'
         }`}
       >
-        <div className="h-[72px] px-5 flex items-center justify-between border-b border-slate-200/80 whitespace-nowrap">
+        <div className="h-[72px] px-5 flex items-center justify-between border-b border-slate-200 whitespace-nowrap">
           <Link to="/" aria-label="WePay Overview Home">
             <WePayLogo />
           </Link>
@@ -111,7 +111,7 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
           )}
         </nav>
 
-        <div className="p-3 border-t border-slate-200/80 space-y-2">
+        <div className="p-3 border-t border-slate-200 space-y-2">
           {isAuthenticated && organizer ? (
             <>
               <Link
@@ -166,13 +166,21 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
       </aside>
 
       {/* Mobile Drawer Overlay */}
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 z-50 lg:hidden bg-slate-900/50"
-          onClick={() => setMobileMenuOpen(false)}
-        >
+      <div
+        className={`drawer-overlay fixed inset-0 z-50 lg:hidden bg-slate-900/50 ${
+          mobileMenuOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        aria-hidden={!mobileMenuOpen}
+        inert={!mobileMenuOpen}
+        onClick={() => setMobileMenuOpen(false)}
+      >
           <aside
-            className="w-72 max-w-[85vw] h-full bg-white border-r border-slate-200 flex flex-col"
+            className={`mobile-drawer-panel w-72 max-w-[85vw] h-full bg-white border-r border-slate-200 flex flex-col ${
+              mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Organizer navigation"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="h-16 px-4 flex items-center justify-between border-b border-slate-200">
@@ -262,17 +270,16 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
               )}
             </div>
           </aside>
-        </div>
-      )}
+      </div>
 
       {/* Main Content Shell */}
       <div
-        className={`flex-1 flex flex-col min-w-0 transition-[padding] duration-200 ${
+        className={`desktop-content-shell flex-1 flex flex-col min-w-0 ${
           desktopSidebarOpen ? 'lg:pl-64' : 'lg:pl-0'
         }`}
       >
         {/* Top Header */}
-        <header className="sticky top-0 z-20 bg-white/90 border-b border-slate-200/80 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 bg-white border-b border-slate-200">
           <div className="px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               {location.pathname !== '/' && <BackButton compact className="shrink-0" />}
@@ -280,6 +287,7 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
                 type="button"
                 onClick={() => setMobileMenuOpen(true)}
                 aria-label="Open navigation menu"
+                aria-expanded={mobileMenuOpen}
                 className="lg:hidden h-10 w-10 -ml-2 rounded-lg flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer shrink-0"
               >
                 <Menu className="h-5 w-5" />
@@ -358,7 +366,7 @@ export const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ requireAuth = 
                         <Link
                           to="/dashboard/transactions"
                           onClick={() => setNotifOpen(false)}
-                          className="inline-block font-medium text-indigo-600 hover:text-indigo-700"
+                          className="inline-block font-medium text-teal-700 hover:text-teal-800"
                         >
                           Inspect all transactions →
                         </Link>

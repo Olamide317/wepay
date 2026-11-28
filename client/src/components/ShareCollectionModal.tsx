@@ -88,7 +88,7 @@ export const ShareCollectionModal: React.FC<ShareCollectionModalProps> = ({
               value={publicUrl}
               aria-label="Public collection URL"
               onFocus={(e) => e.target.select()}
-              className="flex-1 h-10 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs font-mono-num text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+              className="flex-1 h-10 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs font-mono-num text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
             />
             <Button
               variant={copied ? 'secondary' : 'primary'}
@@ -110,7 +110,7 @@ export const ShareCollectionModal: React.FC<ShareCollectionModalProps> = ({
             </Button>
           </div>
           {copied && (
-            <p className="text-xs text-emerald-700 font-medium" role="status">
+            <p className="text-xs text-teal-700 font-medium" role="status">
               Collection link copied to clipboard.
             </p>
           )}

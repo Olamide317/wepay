@@ -15,7 +15,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children, maxWidth =
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="no-print bg-white/95 border-b border-slate-200/80 backdrop-blur-xl">
+      <header className="no-print bg-white border-b border-slate-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <BackButton compact />
@@ -24,7 +24,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children, maxWidth =
             </Link>
           </div>
           <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600 whitespace-nowrap">
-            <Lock className="h-3.5 w-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
+            <Lock className="h-3.5 w-3.5 text-teal-600 shrink-0" aria-hidden="true" />
             <span>Secured checkout via Interswitch</span>
           </div>
         </div>

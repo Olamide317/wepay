@@ -1,30 +1,30 @@
 @import "tailwindcss";
 
 :root {
-  --wepay-brand: #4f46e5;
-  --wepay-brand-hover: #4338ca;
-  --wepay-brand-soft: #eef2ff;
-  --wepay-brand-deep: #3730a3;
-  --wepay-brand-mist: #c7d2fe;
+  --wepay-brand: #0f766e;
+  --wepay-brand-hover: #0d6962;
+  --wepay-brand-soft: #ccfbf1;
+  --wepay-brand-deep: #0f172a;
+  --wepay-brand-mist: #f59e08;
   --wepay-navy: #0f172a;
-  --wepay-bg: #f7f8fc;
+  --wepay-bg: #f8fafc;
   --wepay-bg-subtle: #f1f5f9;
   --wepay-surface: #ffffff;
-  --wepay-border: #e7eaf2;
+  --wepay-border: #e2e8f0;
   --wepay-text: #0f172a;
   --wepay-text-muted: #475569;
   --wepay-success: #16a34a;
-  --wepay-warning: #d97706;
+  --wepay-warning: #f59e08;
   --wepay-error: #dc2626;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @layer base {
   body {
-    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    background:
-      radial-gradient(circle at 100% 0%, rgba(99, 102, 241, 0.035), transparent 24rem),
-      var(--wepay-bg);
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--wepay-bg);
     color: var(--wepay-text);
     min-width: 320px;
   }
@@ -52,6 +52,32 @@
   }
 }
 
+.desktop-sidebar {
+  transition: width 280ms var(--ease-drawer);
+}
+
+.desktop-content-shell {
+  transition: padding 280ms var(--ease-drawer);
+}
+
+.drawer-overlay {
+  transition: opacity 220ms var(--ease-out);
+}
+
+.mobile-drawer-panel {
+  transition: transform 280ms var(--ease-drawer);
+}
+
+.collection-feature-track {
+  animation: collection-feature-marquee 20s linear infinite;
+}
+
+@keyframes collection-feature-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;
@@ -73,6 +99,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+input[type='number'],
+td,
+th {
+  font-variant-numeric: tabular-nums;
+}
+
 .text-balance {
   text-wrap: balance;
 }
@@ -83,6 +115,23 @@
   *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .collection-feature-track {
+    animation: none;
+  }
+
+  .collection-feature-group[aria-hidden='true'] {
+    display: none;
+  }
+
+  .collection-feature-group {
+    width: 100%;
+  }
+
+  .collection-feature-card {
+    flex: 1;
+    width: auto;
   }
 }
 

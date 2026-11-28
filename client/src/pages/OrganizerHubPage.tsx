@@ -76,7 +76,7 @@ export const OrganizerHubPage: React.FC = () => {
                   {organizer.fullName}
                 </h1>
                 {organizer.verified && (
-                  <ShieldCheck className="h-4 w-4 text-emerald-600" aria-label="Verified" />
+                  <ShieldCheck className="h-4 w-4 text-teal-600" aria-label="Verified" />
                 )}
               </div>
               <p className="text-xs font-mono-num text-slate-500">@{organizer.handle}</p>

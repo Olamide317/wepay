@@ -61,12 +61,10 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div
-      className="relative min-h-screen flex flex-col justify-center px-4 py-10 bg-cover bg-center overflow-hidden"
-      style={{
-        backgroundImage: `linear-gradient(rgba(248, 250, 252, 0.68), rgba(248, 250, 252, 0.68)), url(${fundingImage})`,
-      }}
+      className="relative min-h-screen flex flex-col justify-center overflow-hidden bg-cover bg-center px-4 py-10"
+      style={{ backgroundImage: `url(${fundingImage})` }}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,255,255,0.72),transparent_38%)] pointer-events-none" aria-hidden="true" />
+      <div className="absolute inset-0 bg-[#f8fafc]/85" aria-hidden="true" />
       <BackButton className="absolute left-4 top-4 z-10 sm:left-6 sm:top-6" />
       <div className="relative w-full max-w-md mx-auto space-y-6">
         <div className="flex flex-col items-center text-center space-y-2">
@@ -147,7 +145,7 @@ export const LoginPage: React.FC = () => {
 
         <p className="text-center text-sm text-slate-600">
           New to WePay?{' '}
-          <Link to="/register" className="font-semibold text-indigo-600 hover:text-indigo-700">
+          <Link to="/register" className="font-semibold text-teal-700 hover:text-teal-800">
             Create an organizer account
           </Link>
         </p>

@@ -103,7 +103,7 @@ export const AllTransactionsPage: React.FC = () => {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search contributor, collection, or ref..."
             aria-label="Search all transactions"
-            className="w-full h-10 pl-9 pr-3.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600"
+            className="w-full h-10 pl-9 pr-3.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600"
           />
         </div>
       </div>

@@ -54,11 +54,10 @@ On Windows PowerShell:
 Copy-Item .env.example .env
 ```
 
-Default `.env` values for **Prototype Sandbox Mode**:
+The example configuration points to the WePay backend:
 
 ```env
-VITE_API_BASE_URL=""
-VITE_USE_MOCK="true"
+VITE_API_BASE_URL="https://wepay-slkv.onrender.com"
 ```
 
 ---
@@ -82,54 +81,20 @@ http://localhost:3000
 ## 6. Key Routes to Explore
 
 - `/` — Landing page with direct links to all 3 collection modes and receipt inspector.
-- `/login` & `/register` — Organizer authentication (includes one-click demo fill on `/login`).
-- `/dashboard` — Organizer overview, sample metrics, active collections, and status management.
+- `/login` & `/register` — Organizer authentication.
+- `/dashboard` — Organizer overview, collections, and status management.
 - `/dashboard/create` — Create `POOL`, `OPEN`, or `INVENTORY` collections with custom fields.
 - `/dashboard/collections/:id` & `/dashboard/collections/:id/ledger` — Collection details, search/filter ledger, and CSV export.
-- `/c/november-starlink-split` — **Scenario A (POOL)**: ₦75,000 Starlink bill split.
-- `/c/campus-snack-box` — **Scenario B (INVENTORY)**: ₦2,500 Snack Box pre-order with stock limit & hostel fulfillment fields.
-- `/c/csc-400-dues` — **Scenario C (OPEN)**: NACOS 400L Departmental Dues.
-- `/receipt/RCP-SLK-8841` — QR-enabled digital receipt with print & download support.
+- `/c/:slug` — Public collection and payment page.
+- `/receipt/:receiptCode` — Digital receipt verification and download.
 
----
+## 7. Backend Integration
 
-## 7. Prototype Mock Data vs. Live Backend Integration
+The client uses `https://wepay-slkv.onrender.com` by default. To point a local environment at a different backend, set `VITE_API_BASE_URL` in `.env` and restart the dev server.
 
-### Currently Mocked in Prototype Sandbox Mode (`src/services/mockData.ts` & `src/services/wepayService.ts`)
+The REST client (`src/services/apiClient.ts`) sends organizer-authenticated requests with `Authorization: Bearer <token>` to the configured backend. It uses the backend for authentication, collection management, payment initialization and verification, and receipt lookup. Collection and payment data is not seeded or simulated in the client.
 
-When `VITE_API_BASE_URL` is blank or `VITE_USE_MOCK="true"`, the app persists state locally in browser `localStorage` (`wepay_sandbox_store_v1`):
-
-- Organizer registration, login, and settlement bank updates.
-- Sample collections (`November Starlink Subscription`, `Snack Box`, `NACOS 400L Departmental Dues`) and creation of new collections.
-- Payment initialization (`POST /api/payments/initialize`) and simulated Interswitch Sandbox Checkout + backend requery verification.
-- Digital receipt lookup (`GET /api/payments/receipt/:receiptCode`).
-
-> **Important:** Simulated Interswitch sandbox payments are clearly labelled in the UI as **Sandbox Simulation Mode** and never claim to be live verified bank transactions.
-
-### Connecting to Your Live Backend API
-
-1. Set your backend base URL in `.env`:
-
-   ```env
-   VITE_API_BASE_URL="https://your-backend-api.example.com"
-   VITE_USE_MOCK="false"
-   ```
-
-2. Restart the dev server (`npm run dev`).
-3. The REST client (`src/services/apiClient.ts`) automatically routes requests with `Authorization: Bearer <token>` to:
-   - `POST /api/auth/register`
-   - `POST /api/auth/login`
-   - `POST /api/profile/bank`
-   - `POST /api/collections`
-   - `GET /api/collections`
-   - `GET /api/collections/:id/ledger`
-   - `PATCH /api/collections/:id/status`
-   - `GET /api/public/c/:slug`
-   - `GET /api/public/u/:handle`
-   - `POST /api/payments/initialize`
-   - `GET /api/payments/receipt/:receiptCode`
-4. Review contract assumptions noted at the top of `src/services/apiClient.ts` and adjust response field mappings in `src/services/wepayService.ts` if your backend wraps payloads inside `{ data: ... }`.
-5. Never call `POST /api/payments/webhook` from the browser; it is a server-to-server Interswitch endpoint.
+Never call `POST /api/payments/webhook` from the browser; it is a server-to-server Interswitch endpoint.
 
 ---
 

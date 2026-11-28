@@ -2,7 +2,7 @@ import React from 'react';
 import { Loader2 } from 'lucide-react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'payment' | 'outline' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   fullWidth?: boolean;
@@ -10,14 +10,16 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const VARIANT_CLASSES: Record<NonNullable<ButtonProps['variant']>, string> = {
   primary:
-    'bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800 border border-indigo-500/30 shadow-[0_8px_20px_-10px_rgba(79,70,229,0.75)]',
+    'bg-[#0f766e] text-white hover:bg-[#0d6962] active:bg-[#115e59] border border-[#0f766e]',
   secondary:
-    'bg-slate-950 text-white hover:bg-slate-800 active:bg-slate-900 border border-transparent shadow-[0_8px_20px_-12px_rgba(15,23,42,0.75)]',
+    'bg-slate-700 text-white hover:bg-slate-800 active:bg-slate-900 border border-slate-700',
+  payment:
+    'bg-[#f59e08] text-[#0f172a] hover:bg-[#d97706] active:bg-[#b45309] border border-[#f59e08]',
   outline:
-    'bg-white/90 text-slate-700 hover:bg-white hover:text-slate-900 border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.03)]',
-  ghost: 'bg-transparent text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 border border-transparent',
+    'bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950 border border-slate-200',
+  ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-950 border border-transparent',
   danger:
-    'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 border border-transparent shadow-[0_8px_20px_-10px_rgba(220,38,38,0.65)]',
+    'bg-red-700 text-white hover:bg-red-800 active:bg-red-900 border border-red-700',
 };
 
 const SIZE_CLASSES: Record<NonNullable<ButtonProps['size']>, string> = {
@@ -43,7 +45,7 @@ export const Button: React.FC<ButtonProps> = ({
     <button
       type={type}
       disabled={isDisabled}
-      className={`inline-flex items-center justify-center font-semibold transition-[transform,background-color,border-color,box-shadow,color] duration-150 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 active:scale-[0.97] disabled:scale-100 disabled:opacity-55 disabled:cursor-not-allowed cursor-pointer ${VARIANT_CLASSES[variant]} ${SIZE_CLASSES[size]} ${fullWidth ? 'w-full' : ''} ${className}`}
+      className={`inline-flex items-center justify-center font-semibold transition-[transform,background-color,border-color,color] duration-150 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2 active:scale-[0.97] disabled:scale-100 disabled:opacity-55 disabled:cursor-not-allowed cursor-pointer ${VARIANT_CLASSES[variant]} ${SIZE_CLASSES[size]} ${fullWidth ? 'w-full' : ''} ${className}`}
       {...rest}
     >
       {loading && <Loader2 className="h-4 w-4 animate-spin shrink-0" aria-hidden="true" />}

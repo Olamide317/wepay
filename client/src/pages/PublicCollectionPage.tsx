@@ -27,14 +27,15 @@ import {
   InterswitchCheckoutParams,
 } from '../types/wepay';
 import {
+  calculateProcessingFee,
   formatDate,
   formatNaira,
+  getEmailTypoSuggestion,
   getCollectionModeLabel,
   isValidEmail,
   isValidNigerianPhone,
   isValidPhoneInput,
   normalizeFieldType,
-  suggestEmailCorrection,
 } from '../utils/formatters';
 
 interface FormErrors {
@@ -59,7 +60,7 @@ export const PublicCollectionPage: React.FC = () => {
   // Contributor form state
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const emailCorrection = suggestEmailCorrection(email);
+  const emailSuggestion = getEmailTypoSuggestion(email);
   const [phone, setPhone] = useState('');
   const [customAmount, setCustomAmount] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -221,6 +222,10 @@ export const PublicCollectionPage: React.FC = () => {
       : collection.pricingRule === 'FIXED'
       ? collection.amount
       : Number(customAmount) || 0;
+  const processingFee = collection.passFeeToPayer
+    ? calculateProcessingFee(effectiveBaseAmount)
+    : 0;
+  const totalPayable = effectiveBaseAmount + processingFee;
 
   const validate = (): boolean => {
     const next: FormErrors = { custom: {} };
@@ -346,32 +351,23 @@ export const PublicCollectionPage: React.FC = () => {
     }
   };
 
-  const handleCheckoutComplete = async (outcome: 'SUCCESS' | 'FAILED' | 'PENDING') => {
+  const handleCheckoutComplete = async () => {
     if (!checkoutParams) return;
     setCheckoutOpen(false);
     setInitError(null);
     try {
-      if (!checkoutParams.isSandboxSimulation) {
-        const { transaction, interswitchResponse, verificationError } =
-          await wepayService.verifyPaymentByReference(checkoutParams.txnRef);
-        if (transaction.status !== 'SUCCESS') {
-          const reason =
-            verificationError ||
-            interswitchResponse?.ResponseDescription ||
-            (interswitchResponse?.ResponseCode
-              ? `Interswitch response ${interswitchResponse.ResponseCode}.`
-              : 'No successful confirmation was returned.');
-          throw new Error(`Payment is not confirmed: ${reason}`);
-        }
-        navigate(`/receipt/${encodeURIComponent(transaction.receiptCode)}`);
-        return;
+      const { transaction, interswitchResponse, verificationError } =
+        await wepayService.verifyPaymentByReference(checkoutParams.txnRef);
+      if (transaction.status !== 'SUCCESS') {
+        const reason =
+          verificationError ||
+          interswitchResponse?.ResponseDescription ||
+          (interswitchResponse?.ResponseCode
+            ? `Interswitch response ${interswitchResponse.ResponseCode}.`
+            : 'No successful confirmation was returned.');
+        throw new Error(`Payment is not confirmed: ${reason}`);
       }
-
-      const receipt = await wepayService.simulateSandboxVerification(
-        checkoutParams.receiptCode,
-        outcome
-      );
-      navigate(`/receipt/${encodeURIComponent(receipt.transaction.receiptCode)}`);
+      navigate(`/receipt/${encodeURIComponent(transaction.receiptCode)}`);
     } catch (err) {
       setInitError(
         err instanceof Error ? err.message : 'Unable to verify the Interswitch transaction.'
@@ -380,10 +376,10 @@ export const PublicCollectionPage: React.FC = () => {
   };
 
   return (
-    <PublicLayout maxWidth="xl">
-      <div className="grid lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+    <PublicLayout maxWidth="md">
+      <div className="max-w-lg mx-auto space-y-5">
         {/* Left Column: Collection Details */}
-        <div className="lg:col-span-6 space-y-5">
+        <div className="space-y-5">
           <Card padding="lg" className="space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs font-medium text-slate-500">
@@ -426,7 +422,7 @@ export const PublicCollectionPage: React.FC = () => {
                 {collection.organizerVerified && (
                   <>
                     <span aria-hidden="true">·</span>
-                    <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
+                    <span className="inline-flex items-center gap-1 text-teal-700 font-medium">
                       <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
                       Verified Organizer
                     </span>
@@ -435,6 +431,23 @@ export const PublicCollectionPage: React.FC = () => {
               </div>
               <p className="text-sm text-slate-600 leading-relaxed pt-1">
                 {collection.description}
+              </p>
+            </div>
+
+            <div className="border-t border-slate-200 pt-4 space-y-2.5">
+              <p className="text-xs font-semibold text-slate-700">Checkout methods</p>
+              <div className="flex flex-wrap gap-2">
+                {['Verve', 'Mastercard', 'Visa', 'Bank Transfer', 'USSD'].map((rail) => (
+                  <span
+                    key={rail}
+                    className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600"
+                  >
+                    {rail}
+                  </span>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Payment options depend on what Interswitch makes available at checkout.
               </p>
             </div>
 
@@ -450,7 +463,7 @@ export const PublicCollectionPage: React.FC = () => {
                   </div>
                   <div>
                     <span className="text-xs text-slate-500 block">Remaining</span>
-                    <span className="text-base sm:text-lg font-bold font-mono-num text-indigo-700">
+                    <span className="text-base sm:text-lg font-bold font-mono-num text-teal-800">
                       {formatNaira(remainingPool, false)}
                     </span>
                   </div>
@@ -507,7 +520,7 @@ export const PublicCollectionPage: React.FC = () => {
                     <span className="text-xs text-slate-500 block">Availability</span>
                     <span
                       className={`text-sm font-semibold font-mono-num ${
-                        remainingStock > 0 ? 'text-emerald-700' : 'text-red-700'
+                        remainingStock > 0 ? 'text-teal-700' : 'text-red-700'
                       }`}
                     >
                       {remainingStock > 0
@@ -525,17 +538,17 @@ export const PublicCollectionPage: React.FC = () => {
         </div>
 
         {/* Right Column: Contributor Payment Form */}
-        <div className="lg:col-span-6">
+        <div>
           {isUnavailable ? (
             <Card padding="lg" className="space-y-4">
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
                   {collection.status === 'PAUSED' ? (
-                    <PauseCircle className="h-5 w-5 text-amber-600" />
+                    <PauseCircle className="h-5 w-5 text-[#f59e08]" />
                   ) : isTargetReached ||
                     collection.status === 'COMPLETED' ||
                     collection.status === 'SOLD_OUT' ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                    <CheckCircle2 className="h-5 w-5 text-teal-600" />
                   ) : (
                     <AlertCircle className="h-5 w-5 text-red-600" />
                   )}
@@ -579,7 +592,7 @@ export const PublicCollectionPage: React.FC = () => {
                 <div>
                   <h2 className="font-display text-lg font-semibold text-slate-900">
                     {collection.type === 'INVENTORY'
-                      ? 'Pre-Order Details'
+                      ? 'Inventory Details'
                       : 'Contributor Information'}
                   </h2>
                   <p className="text-xs text-slate-500 mt-0.5">
@@ -658,9 +671,9 @@ export const PublicCollectionPage: React.FC = () => {
                 />
 
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
+                  <div className="space-y-1.5">
                     <Input
-                      label="Email Address (for digital receipt)"
+                      label="Email address (for digital receipt)"
                       type="email"
                       required
                       autoComplete="email"
@@ -669,14 +682,21 @@ export const PublicCollectionPage: React.FC = () => {
                       onChange={(e) => setEmail(e.target.value)}
                       error={errors.email}
                     />
-                    {emailCorrection && (
-                      <button
-                        type="button"
-                        className="mt-1.5 text-xs font-medium text-indigo-600 underline hover:text-indigo-700"
-                        onClick={() => setEmail(emailCorrection)}
-                      >
-                        Did you mean {emailCorrection}?
-                      </button>
+                    {emailSuggestion && (
+                      <p className="text-xs text-slate-600">
+                        Did you mean{' '}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEmail(emailSuggestion);
+                            setErrors((previous) => ({ ...previous, email: undefined }));
+                          }}
+                          className="font-semibold text-teal-700 underline underline-offset-2"
+                        >
+                          {emailSuggestion}
+                        </button>
+                        ?
+                      </p>
                     )}
                   </div>
                   <Input
@@ -721,24 +741,23 @@ export const PublicCollectionPage: React.FC = () => {
                   </div>
                   <div className="flex justify-between text-slate-600 text-xs">
                     <span>Processing fee</span>
-                    <span className="font-medium text-slate-700">
+                    <span className="font-mono-num font-medium text-slate-700">
                       {collection.passFeeToPayer
-                        ? 'Calculated at Interswitch checkout'
+                        ? formatNaira(processingFee)
                         : '₦0.00 (Covered by organizer)'}
                     </span>
                   </div>
                   <div className="flex justify-between items-baseline pt-2 border-t border-slate-200">
-                    <span className="font-semibold text-slate-900">
-                      {collection.passFeeToPayer ? 'Base Payable' : 'Total Payable'}
-                    </span>
+                    <span className="font-semibold text-slate-900">Total payable</span>
                     <span className="text-lg font-bold font-mono-num text-slate-900">
-                      {formatNaira(effectiveBaseAmount)}
+                      {formatNaira(totalPayable)}
                     </span>
                   </div>
                 </div>
 
                 <Button
                   type="submit"
+                  variant="payment"
                   fullWidth
                   size="lg"
                   loading={initializing}
@@ -749,8 +768,8 @@ export const PublicCollectionPage: React.FC = () => {
                     {initializing
                       ? 'Initializing Interswitch Checkout...'
                       : collection.type === 'INVENTORY'
-                      ? `Complete Pre-Order · ${formatNaira(effectiveBaseAmount)}`
-                      : `Pay Now · ${formatNaira(effectiveBaseAmount)}`}
+                      ? `Complete Order · ${formatNaira(totalPayable)}`
+                      : `Pay Now · ${formatNaira(totalPayable)}`}
                   </span>
                 </Button>
               </form>

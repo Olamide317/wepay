@@ -41,7 +41,7 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/45"
       role="dialog"
       aria-modal="true"
       aria-labelledby="wepay-modal-title"
@@ -50,7 +50,7 @@ export const Modal: React.FC<ModalProps> = ({
       }}
     >
       <div
-        className={`w-full ${SIZE_CLASSES[size]} bg-white rounded-2xl border border-slate-200/90 shadow-[0_24px_80px_-24px_rgba(15,23,42,0.38)] overflow-hidden max-h-[92vh] flex flex-col`}
+        className={`w-full ${SIZE_CLASSES[size]} bg-white rounded-xl border border-slate-200 shadow-xl shadow-slate-950/10 overflow-hidden max-h-[92vh] flex flex-col`}
       >
         <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-slate-200">
           <div>

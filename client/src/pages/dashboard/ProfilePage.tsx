@@ -13,6 +13,7 @@ import { wepayService } from '../../services/wepayService';
 
 export const ProfilePage: React.FC = () => {
   const { organizer, setOrganizerState } = useAuth();
+<<<<<<< HEAD
   const { showToast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -23,6 +24,9 @@ export const ProfilePage: React.FC = () => {
   const returnToCreate =
     new URLSearchParams(location.search).get('returnTo') === '/dashboard/create' ||
     historyReturnTo === '/dashboard/create';
+=======
+  const { toast } = useToast();
+>>>>>>> 032fd78438db8006491bb34ed92c96b5600174c4
 
   const [bankCode, setBankCode] = useState(organizer?.settlementBank?.bankCode || '');
   const [accountNumber, setAccountNumber] = useState(
@@ -79,9 +83,13 @@ export const ProfilePage: React.FC = () => {
       });
       setOrganizerState(res.organizer);
       setSaveSuccess(true);
+<<<<<<< HEAD
       if (returnToCreate) {
         showToast('Bank details saved. Your collection draft is ready to continue.', 'success');
       }
+=======
+      toast('Settlement bank account saved successfully.', 'success');
+>>>>>>> 032fd78438db8006491bb34ed92c96b5600174c4
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Unable to save bank details.');
     } finally {
@@ -141,7 +149,7 @@ export const ProfilePage: React.FC = () => {
 
         <Card className="md:col-span-7 space-y-4">
           <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="h-9 w-9 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
               <Building2 className="h-4 w-4" />
             </div>
             <div>
