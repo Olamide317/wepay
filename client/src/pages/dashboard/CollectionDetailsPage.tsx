@@ -8,6 +8,7 @@ import {
   PauseCircle,
   PlayCircle,
   Share2,
+  Sparkles,
   XCircle,
 } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
@@ -39,6 +40,14 @@ export const CollectionDetailsPage: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [confirmNextStatus, setConfirmNextStatus] = useState<CollectionStatus | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insights, setInsights] = useState<{
+    headline: string;
+    insights: string[];
+    whatsappBroadcast: string;
+    urgencyLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  } | null>(null);
+  const [broadcastCopied, setBroadcastCopied] = useState(false);
 
   const load = async () => {
     if (!id) return;
@@ -127,6 +136,30 @@ export const CollectionDetailsPage: React.FC = () => {
     }
   };
 
+  const handleGenerateInsights = async () => {
+    setInsightsLoading(true);
+    setError(null);
+    try {
+      const result = await wepayService.getCollectionAiInsights(collection._id);
+      setInsights(result.analysis);
+    } catch (insightError) {
+      setError(insightError instanceof Error ? insightError.message : 'Unable to generate collection insights.');
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
+  const handleCopyBroadcast = async () => {
+    if (!insights?.whatsappBroadcast) return;
+    try {
+      await navigator.clipboard.writeText(insights.whatsappBroadcast);
+      setBroadcastCopied(true);
+      window.setTimeout(() => setBroadcastCopied(false), 2000);
+    } catch {
+      setBroadcastCopied(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Breadcrumb & Actions */}
@@ -180,17 +213,19 @@ export const CollectionDetailsPage: React.FC = () => {
               <span>Resume</span>
             </Button>
           )}
-          {collection.status !== 'CLOSED' && collection.status !== 'COMPLETED' && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-600 border-red-200 hover:bg-red-50"
-              onClick={() => setConfirmNextStatus('CLOSED')}
-            >
-              <XCircle className="h-4 w-4" />
-              <span>Close</span>
-            </Button>
-          )}
+          {collection.status !== 'CLOSED' &&
+            collection.status !== 'COMPLETED' &&
+            collection.status !== 'SOLD_OUT' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-red-600 border-red-200 hover:bg-red-50"
+                onClick={() => setConfirmNextStatus('CLOSED')}
+              >
+                <XCircle className="h-4 w-4" />
+                <span>Close</span>
+              </Button>
+            )}
         </div>
       </div>
 
@@ -293,6 +328,51 @@ export const CollectionDetailsPage: React.FC = () => {
           </div>
         </Card>
       </div>
+
+      <Card padding="lg" className="border-indigo-100 bg-gradient-to-br from-indigo-50/60 to-white">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-indigo-600" />
+              <h2 className="text-sm font-bold text-slate-900">WePay AI Insights & WhatsApp Broadcast</h2>
+            </div>
+            {insights ? (
+              <p className="text-sm font-semibold text-slate-800">{insights.headline}</p>
+            ) : (
+              <p className="text-xs text-slate-500">Generate a live progress summary and organizer reminder.</p>
+            )}
+          </div>
+          <Button variant="primary" size="sm" onClick={() => void handleGenerateInsights()} loading={insightsLoading}>
+            {!insightsLoading && <Sparkles className="h-3.5 w-3.5" />}
+            <span>Generate AI Insights</span>
+          </Button>
+        </div>
+        {insights && (
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <ul className="space-y-2">
+              {insights.insights.slice(0, 3).map((insight) => (
+                <li key={insight} className="flex gap-2 text-xs leading-relaxed text-slate-700">
+                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-600" />
+                  <span>{insight}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="rounded-xl border border-slate-200 bg-white p-3">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">WhatsApp reminder</p>
+              <p className="text-xs leading-relaxed text-slate-700">{insights.whatsappBroadcast}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => void handleCopyBroadcast()}
+              >
+                {broadcastCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                <span>{broadcastCopied ? 'Copied' : 'Copy WhatsApp Reminder'}</span>
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
 
       {/* Configured Contributor Information Fields */}
       {collection.customFields.length > 0 && (

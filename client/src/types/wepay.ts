@@ -1,6 +1,6 @@
 export type CollectionType = 'POOL' | 'OPEN' | 'INVENTORY';
 
-export type CollectionStatus = 'ACTIVE' | 'COMPLETED' | 'PAUSED' | 'CLOSED';
+export type CollectionStatus = 'ACTIVE' | 'COMPLETED' | 'SOLD_OUT' | 'PAUSED' | 'CLOSED';
 
 export type PricingRule = 'FIXED' | 'MINIMUM' | 'FLEXIBLE';
 
@@ -34,6 +34,8 @@ export interface Organizer {
   avatarUpdatedAt?: string;
   settlementBank?: SettlementBank;
   verified?: boolean;
+  isFounder?: boolean;
+  role?: 'ORGANIZER' | 'SUPER_ADMIN';
   createdAt: string;
 }
 
@@ -107,6 +109,59 @@ export interface Transaction {
   createdAt: string;
 }
 
+export interface AdminPerson {
+  fullName?: string;
+  name?: string;
+  email?: string;
+}
+
+export interface AdminTransaction extends Omit<Transaction, 'collectionId'> {
+  payerName?: string;
+  collectionId:
+    | string
+    | {
+        title?: string;
+        slug?: string;
+        organizer?: AdminPerson | null;
+      }
+    | null;
+}
+
+export interface AdminCollection {
+  _id: string;
+  title: string;
+  slug: string;
+  type: CollectionType;
+  status: CollectionStatus;
+  totalCollected: number;
+  contributorCount: number;
+  createdAt: string;
+  organizer?: AdminPerson | null;
+}
+
+export interface AdminOrganizer extends AdminPerson {
+  _id: string;
+  handle?: string;
+  createdAt?: string;
+  collectionCount: number;
+  totalVolumeRaised: number;
+}
+
+export interface AdminOverviewData {
+  kpis: {
+    totalGrossVolume: number;
+    totalFeeRevenue: number;
+    totalOrganizers: number;
+    activeCollections: number;
+    totalTransactions: number;
+    successfulTransactions: number;
+    conversionRate: number;
+  };
+  recentTransactions: AdminTransaction[];
+  collections: AdminCollection[];
+  organizers: AdminOrganizer[];
+}
+
 export interface PaymentInitializeRequest {
   slug: string;
   contributorName: string;
@@ -151,4 +206,58 @@ export interface CreateCollectionInput {
   passFeeToPayer: boolean;
   customFields: CustomField[];
   expiresAt?: string;
+}
+
+export interface AiNavigatorAction {
+  label: string;
+  route: string;
+  description: string;
+}
+
+export interface AiNavigatorResponse {
+  reply: string;
+  actions: AiNavigatorAction[];
+  source: 'gemini' | 'smart-fallback';
+}
+
+export interface AiCollectionDraft {
+  title?: string;
+  description?: string;
+  type?: CollectionType;
+  mode?: 'SPLIT' | 'FLEXIBLE';
+  pricingRule?: PricingRule;
+  amount?: number;
+  targetAmount?: number;
+  stockLimit?: number;
+  passFeeToPayer?: boolean;
+  customFields?: CustomField[];
+  auditTips?: string[];
+  engine?: string;
+}
+
+export interface AiLedgerAnswer {
+  answer: string;
+  summaryMetric: string;
+  matchedTransactionIds: string[];
+  source: 'gemini' | 'smart-fallback';
+}
+
+export interface AiCollectionAnalysis {
+  headline: string;
+  insights: string[];
+  whatsappBroadcast: string;
+  urgencyLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+}
+
+export interface AiFraudFinding {
+  title: string;
+  detail: string;
+  severity: 'INFO' | 'WARN' | 'ALERT';
+}
+
+export interface AiFraudRadar {
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  headline: string;
+  findings: AiFraudFinding[];
+  recommendations: string[];
 }

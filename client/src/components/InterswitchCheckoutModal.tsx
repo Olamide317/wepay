@@ -32,7 +32,7 @@ interface InterswitchCheckoutModalProps {
 type PaymentMethod = 'CARD' | 'TRANSFER' | 'USSD';
 
 const ISW_SCRIPT_URLS: Record<InterswitchCheckoutParams['mode'], string> = {
-  TEST: 'https://newwebpay-sandbox.interswitchng.com/inline-checkout.js',
+  TEST: 'https://newwebpay.qa.interswitchng.com/inline-checkout.js',
   LIVE: 'https://newwebpay.interswitchng.com/inline-checkout.js',
 };
 
@@ -78,14 +78,18 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
 
   if (!params) return null;
 
+  const checkoutMode: InterswitchCheckoutParams['mode'] =
+    (params.mode || import.meta.env.VITE_ISW_MODE || 'LIVE').toUpperCase() === 'LIVE'
+      ? 'LIVE'
+      : 'TEST';
   const handleLaunchInterswitch = async () => {
     setGatewayError(null);
     setPhase('LOADING_SDK');
 
-    const sdkReady = await ensureInterswitchScript(params.mode);
+    const sdkReady = await ensureInterswitchScript(checkoutMode);
     if (!sdkReady || typeof window.webpayCheckout !== 'function') {
       setPhase('SELECT');
-      setGatewayError(`Could not load the Interswitch ${params.mode} checkout script. Check your network or try backend requery.`);
+      setGatewayError(`Could not load the Interswitch ${checkoutMode} checkout script. Check your network or try backend requery.`);
       return;
     }
 
@@ -93,14 +97,14 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
     const apiBaseUrl = getApiBaseUrl() || window.location.origin;
 
     const paymentRequest = {
-      merchant_code: params.merchantCode || 'MX6072',
-      pay_item_id: params.payItemId || '9405967',
+      merchant_code: params.merchantCode || import.meta.env.VITE_ISW_MERCHANT_CODE || 'MX153376',
+      pay_item_id: params.payItemId || import.meta.env.VITE_ISW_PAY_ITEM_ID || '9616745',
       txn_ref: params.txnRef,
       amount: String(params.amount),
       currency: 566,
-      cust_email: contributorEmail || 'contributor@wepay.ng',
+      cust_email: contributorEmail.trim(),
       site_redirect_url: new URL('/api/payments/redirect-return', apiBaseUrl).toString(),
-      mode: params.mode,
+      mode: checkoutMode,
       onComplete: async (response: Record<string, unknown>) => {
         const respCode = String(response?.resp || response?.ResponseCode || '');
         if (respCode === '00') {
@@ -148,9 +152,9 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
       onClose={phase === 'VERIFYING' || phase === 'LOADING_SDK' ? () => {} : onClose}
       title="Interswitch Web Checkout"
       description={
-        params.mode === 'LIVE'
+        checkoutMode === 'LIVE'
           ? 'Connected to Interswitch production IPG and verified via server-side requery.'
-          : 'Connected to the configured Interswitch test gateway and verified via server-side requery.'
+          : 'Connected to Interswitch sandbox IPG and verified via server-side requery.'
       }
       size="md"
     >
@@ -159,7 +163,7 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
           <ShieldCheck className="h-4 w-4 text-teal-700 shrink-0 mt-0.5" aria-hidden="true" />
           <div className="flex-1">
             <div className="flex items-center justify-between gap-2">
-              <p className="font-semibold">Interswitch {params.mode} Gateway Ready</p>
+              <p className="font-semibold">Interswitch {checkoutMode} Gateway Ready</p>
             </div>
           </div>
         </div>

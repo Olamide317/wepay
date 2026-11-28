@@ -133,7 +133,9 @@ export function getEmailTypoSuggestion(email: string): string | undefined {
   const domainSuggestions: Record<string, string> = {
     'gmial.com': 'gmail.com',
     'gmal.com': 'gmail.com',
+    'gmail.co': 'gmail.com',
     'yaho.com': 'yahoo.com',
+    'hotmal.com': 'hotmail.com',
   };
   const suggestedDomain = domainSuggestions[domain];
 
@@ -141,6 +143,8 @@ export function getEmailTypoSuggestion(email: string): string | undefined {
     ? `${trimmedEmail.slice(0, atIndex)}@${suggestedDomain}`
     : undefined;
 }
+
+export const suggestEmailCorrection = getEmailTypoSuggestion;
 
 export function isValidNigerianPhone(phone: string): boolean {
   const cleaned = phone.replace(/[\s()-]/g, '');

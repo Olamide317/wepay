@@ -72,6 +72,16 @@ exports.createCollection = async (req, res) => {
         ? numericAmount * numericStockLimit
         : Number(targetAmount ?? totalTarget ?? numericAmount) || 0;
 
+    if (
+      (resolvedType === 'INVENTORY' || resolvedPricingRule !== 'FLEXIBLE') &&
+      numericAmount < 10
+    ) {
+      return res.status(400).json({ message: 'Collection price must be at least ₦10.' });
+    }
+    if (resolvedType === 'POOL' && numericTarget < 10) {
+      return res.status(400).json({ message: 'Pool target must be at least ₦10.' });
+    }
+
     let sanitizedPayers = [];
     let computedPerPerson = Number(perPersonAmount ?? numericAmount) || 0;
 
@@ -262,7 +272,7 @@ const parsePromptFallback = (rawPrompt) => {
       const mult = m[2] ? 1000 : 1;
       return { val: Math.round(num * mult), index: m.index || 0, hasCurrency: /₦|ngn|\bk\b/i.test(m[0]) };
     })
-    .filter((item) => item.val >= 100 || item.hasCurrency);
+    .filter((item) => item.val >= 10 || item.hasCurrency);
 
   const peopleMatch = lower.match(/\b(?:among|between|for|split by)\s+(\d+)\s*(?:people|friends|roommates|students|members|payers)?\b/);
   const stockMatch = lower.match(/\b(\d+)\s*(?:boxes?|packs?|units?|tickets?|manuals?|hoodies?|shirts?|jerseys?|plates?|slots?|copies)\b/);
@@ -275,14 +285,14 @@ const parsePromptFallback = (rawPrompt) => {
   if (type === 'INVENTORY') {
     pricingRule = 'FIXED';
     stockLimit = stockMatch ? Math.max(1, parseInt(stockMatch[1], 10)) : 25;
-    const priceCandidate = amountMatches.find((m) => m.val >= 100 && m.val !== stockLimit);
+    const priceCandidate = amountMatches.find((m) => m.val >= 10 && m.val !== stockLimit);
     amount = priceCandidate ? priceCandidate.val : 2500;
   } else if (type === 'POOL') {
     pricingRule = 'FIXED';
     const biggest = amountMatches.sort((a, b) => b.val - a.val)[0];
     targetAmount = biggest ? biggest.val : 50000;
     const splitCount = peopleMatch ? Math.max(2, parseInt(peopleMatch[1], 10)) : 5;
-    amount = Math.max(100, Math.ceil(targetAmount / splitCount));
+    amount = Math.max(10, Math.ceil(targetAmount / splitCount));
   } else {
     pricingRule = /\b(minimum|at least|from)\b/.test(lower)
       ? 'MINIMUM'

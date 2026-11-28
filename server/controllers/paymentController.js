@@ -2,47 +2,25 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Collection = require('../models/Collection');
 const Transaction = require('../models/Transaction');
+const {
+  sendPaymentReceiptEmail,
+  sendSoldOutEmail,
+  sendTargetReachedEmail,
+} = require('../services/emailService');
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const getIswConfig = () => {
-  const configuredMode = String(process.env.ISW_MODE || 'TEST').trim().toUpperCase();
-  const qaMode = configuredMode === 'QA';
-  const mode = qaMode ? 'TEST' : configuredMode;
-  if (mode !== 'TEST' && mode !== 'LIVE') {
-    const error = new Error('ISW_MODE must be set to TEST, QA, or LIVE.');
-    error.status = 500;
-    throw error;
-  }
-
-  const configuredMerchantCode =
-    process.env.ISW_MERCHANT_CODE || process.env.INTERSWITCH_MERCHANT_CODE;
-  const merchantCode = configuredMerchantCode || 'MX6072';
-  const configuredPayItemId =
-    process.env.ISW_PAY_ITEM_ID || process.env.INTERSWITCH_PAY_ITEM_ID;
-  if (
-    mode === 'LIVE' &&
-    (!configuredMerchantCode ||
-      !configuredPayItemId ||
-      merchantCode === 'MX6072' ||
-      configuredPayItemId === '9405967')
-  ) {
-    const error = new Error(
-      'Live IPG requires your production ISW_MERCHANT_CODE and ISW_PAY_ITEM_ID from Interswitch.'
-    );
-    error.status = 503;
-    throw error;
-  }
+  const isLive = (process.env.ISW_MODE || 'LIVE').toUpperCase() === 'LIVE';
+  const merchantCode = process.env.ISW_MERCHANT_CODE || 'MX153376';
+  const payItemId = process.env.ISW_PAY_ITEM_ID || '9616745';
 
   return {
-    mode,
+    mode: isLive ? 'LIVE' : 'TEST',
     merchantCode,
-    payItemId: configuredPayItemId || '9405967',
-    requeryBaseUrl:
-      qaMode || merchantCode === 'MX6072'
-        ? 'https://qa.interswitchng.com/collections/api/v1/gettransaction.json'
-        : process.env.ISW_REQUERY_URL ||
-          (mode === 'LIVE'
-            ? 'https://webpay.interswitchng.com/collections/api/v1/gettransaction'
-            : 'https://sandbox.interswitchng.com/collections/api/v1/gettransaction'),
+    payItemId,
+    requeryBaseUrl: isLive
+      ? 'https://webpay.interswitchng.com/collections/api/v1/gettransaction.json'
+      : 'https://qa.interswitchng.com/collections/api/v1/gettransaction.json',
   };
 };
 
@@ -50,6 +28,107 @@ const isVerifiedInterswitchPayment = (response, expectedAmountKobo) =>
   response?.ResponseCode === '00' &&
   Number.isFinite(Number(response.Amount)) &&
   Number(response.Amount) === Number(expectedAmountKobo);
+
+const notifyReceiptEmail = (transaction, collection) => {
+  if (!transaction.contributorEmail) return;
+  void Promise.resolve()
+    .then(() =>
+      sendPaymentReceiptEmail({
+        payerName: transaction.payerName || transaction.contributorName,
+        payerEmail: transaction.contributorEmail,
+        collectionTitle: collection?.title,
+        amountPaid: transaction.totalPaid,
+        receiptCode: transaction.receiptCode,
+        txnRef: transaction.txnRef,
+        quantity: transaction.quantity,
+        paidAt: transaction.paidAt,
+      })
+    )
+    .catch((error) => console.error('[Brevo Receipt Error]:', error.message));
+};
+
+const notifyCollectionMilestones = async (collectionId) => {
+  const collection = await Collection.findById(collectionId).populate(
+    'organizer',
+    'fullName name email'
+  );
+  if (!collection?.organizer?.email) return;
+
+  const organizerName =
+    collection.organizer.fullName || collection.organizer.name || 'Organizer';
+
+  if (
+    collection.targetAmount > 0 &&
+    collection.totalCollected >= collection.targetAmount
+  ) {
+    const result = await Collection.updateOne(
+      {
+        _id: collection._id,
+        $or: [
+          { targetReachedNotified: false },
+          { targetReachedNotified: { $exists: false } },
+        ],
+      },
+      { $set: { targetReachedNotified: true } }
+    );
+    if (result.modifiedCount === 1) {
+      void Promise.resolve()
+        .then(() =>
+          sendTargetReachedEmail({
+            organizerName,
+            organizerEmail: collection.organizer.email,
+            collectionTitle: collection.title,
+            collectionSlug: collection.slug,
+            totalCollected: collection.totalCollected,
+            targetAmount: collection.targetAmount,
+          })
+        )
+        .catch((error) =>
+          console.error('[Brevo Target Reached Error]:', error.message)
+        );
+    }
+  }
+
+  if (
+    collection.type === 'INVENTORY' &&
+    collection.status === 'SOLD_OUT'
+  ) {
+    const result = await Collection.updateOne(
+      {
+        _id: collection._id,
+        $or: [
+          { soldOutNotified: false },
+          { soldOutNotified: { $exists: false } },
+        ],
+      },
+      { $set: { soldOutNotified: true } }
+    );
+    if (result.modifiedCount === 1) {
+      void Promise.resolve()
+        .then(() =>
+          sendSoldOutEmail({
+            organizerName,
+            organizerEmail: collection.organizer.email,
+            collectionTitle: collection.title,
+            collectionSlug: collection.slug,
+            totalCollected: collection.totalCollected,
+            stockLimit: collection.stockLimit,
+          })
+        )
+        .catch((error) =>
+          console.error('[Brevo Sold Out Error]:', error.message)
+        );
+    }
+  }
+};
+
+const notifySuccessfulSettlement = (settlement) => {
+  if (!settlement.newlySettled) return;
+  notifyReceiptEmail(settlement.transaction, settlement.collection);
+  void notifyCollectionMilestones(settlement.collection?._id).catch((error) =>
+    console.error('[WePay Collection Alert Error]:', error.message)
+  );
+};
 
 const formatTransactionResponse = (tx, collection) => ({
   _id: tx._id,
@@ -76,13 +155,17 @@ const formatTransactionResponse = (tx, collection) => ({
   isSimulated: false,
 });
 
-const settleTransactionSuccess = async (tx, interswitchRef) => {
+const settleTransactionSuccess = async (tx, interswitchRef, iswData) => {
   const session = await mongoose.startSession();
   let settledTransaction = tx;
+  let settledCollection = null;
+  let newlySettled = false;
   let transactionFailed = false;
 
   try {
     await session.withTransaction(async () => {
+      newlySettled = false;
+      settledCollection = null;
       const currentTx = await Transaction.findOne({ txnRef: tx.txnRef }).session(session);
       if (!currentTx || currentTx.status === 'SUCCESS' || currentTx.status === 'FAILED') {
         settledTransaction = currentTx || tx;
@@ -94,6 +177,7 @@ const settleTransactionSuccess = async (tx, interswitchRef) => {
         settledTransaction = currentTx;
         return;
       }
+      settledCollection = collection;
 
       const qty = Math.max(1, Number(currentTx.quantity) || 1);
       let updatedCol = null;
@@ -124,8 +208,11 @@ const settleTransactionSuccess = async (tx, interswitchRef) => {
           return;
         }
 
-        if ((updatedCol.stockSold || 0) >= updatedCol.stockLimit && updatedCol.status === 'ACTIVE') {
-          updatedCol.status = 'COMPLETED';
+        if (
+          (updatedCol.stockSold || 0) >= updatedCol.stockLimit &&
+          updatedCol.status !== 'SOLD_OUT'
+        ) {
+          updatedCol.status = 'SOLD_OUT';
           await updatedCol.save({ session });
         }
       } else {
@@ -157,6 +244,12 @@ const settleTransactionSuccess = async (tx, interswitchRef) => {
 
       const now = new Date();
       const secret = process.env.JWT_SECRET || 'wepay_receipt_secret';
+      currentTx.contributorEmail = String(
+        currentTx.contributorEmail ||
+          iswData?.CustomerEmail ||
+          iswData?.customerEmail ||
+          ''
+      ).trim();
       currentTx.status = 'SUCCESS';
       currentTx.interswitchRef = interswitchRef || `ISW-${Date.now()}`;
       currentTx.receiptHash = crypto
@@ -167,6 +260,7 @@ const settleTransactionSuccess = async (tx, interswitchRef) => {
       currentTx.paidAt = now;
       currentTx.verifiedAt = now;
       await currentTx.save({ session });
+      newlySettled = true;
 
       if (updatedCol && Array.isArray(updatedCol.expectedPayers) && updatedCol.expectedPayers.length > 0) {
         const targetName = currentTx.contributorName.toLowerCase().trim();
@@ -184,7 +278,11 @@ const settleTransactionSuccess = async (tx, interswitchRef) => {
       settledTransaction = currentTx;
     });
 
-    return settledTransaction;
+    return {
+      transaction: settledTransaction,
+      collection: settledCollection,
+      newlySettled,
+    };
   } catch (error) {
     transactionFailed = true;
     try {
@@ -222,6 +320,11 @@ exports.initializePayment = async (req, res) => {
 
     if (!slug || !contributorName || !contributorName.trim()) {
       return res.status(400).json({ message: 'Collection slug and contributor name are required' });
+    }
+    if (!EMAIL_REGEX.test(String(contributorEmail || '').trim())) {
+      return res.status(400).json({
+        message: 'Please enter a valid email address for your digital receipt.',
+      });
     }
 
     const collection = await Collection.findOne({ slug: String(slug).trim() }).populate(
@@ -262,8 +365,8 @@ exports.initializePayment = async (req, res) => {
         ? requestedAmount
         : unitOrBase;
 
-    if (!baseAmount || baseAmount < 100) {
-      return res.status(400).json({ message: 'Payment amount must be at least â‚¦100' });
+    if (!baseAmount || baseAmount < 10) {
+      return res.status(400).json({ message: 'Payment amount must be at least ₦10' });
     }
 
     const passFeeToPayer =
@@ -387,7 +490,9 @@ exports.verifyPayment = async (req, res) => {
     if (isApproved) {
       const ref =
         iswData?.PaymentReference || iswData?.RetrievalReferenceNumber || `ISW-QA-${Date.now()}`;
-      tx = await settleTransactionSuccess(tx, ref);
+      const settlement = await settleTransactionSuccess(tx, ref, iswData);
+      tx = settlement.transaction;
+      notifySuccessfulSettlement(settlement);
     } else if (iswData && iswData.ResponseCode && iswData.ResponseCode !== '09') {
       await Transaction.updateOne(
         { _id: tx._id, status: 'PENDING' },
@@ -448,7 +553,9 @@ exports.handleWebhook = async (req, res) => {
       if (isVerifiedInterswitchPayment(iswData, amountKobo)) {
         const ref =
           iswData.PaymentReference || iswData.RetrievalReferenceNumber || `ISW-WH-${Date.now()}`;
-        tx = await settleTransactionSuccess(tx, ref);
+        const settlement = await settleTransactionSuccess(tx, ref, iswData);
+        tx = settlement.transaction;
+        notifySuccessfulSettlement(settlement);
       }
     }
 

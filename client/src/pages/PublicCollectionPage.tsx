@@ -242,7 +242,7 @@ export const PublicCollectionPage: React.FC = () => {
     if (collection.type !== 'INVENTORY' && collection.pricingRule !== 'FIXED') {
       const val = Number(customAmount);
       const minRequired =
-        collection.pricingRule === 'MINIMUM' ? collection.amount : 100;
+        collection.pricingRule === 'MINIMUM' ? Math.max(10, collection.amount) : 10;
       if (!customAmount || Number.isNaN(val) || val < minRequired) {
         next.amount = `Minimum contribution is ${formatNaira(minRequired)}.`;
       } else if (collection.type === 'POOL' && val > remainingPool) {
@@ -545,7 +545,9 @@ export const PublicCollectionPage: React.FC = () => {
                 <div className="h-10 w-10 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
                   {collection.status === 'PAUSED' ? (
                     <PauseCircle className="h-5 w-5 text-[#f59e08]" />
-                  ) : isTargetReached || collection.status === 'COMPLETED' ? (
+                  ) : isTargetReached ||
+                    collection.status === 'COMPLETED' ||
+                    collection.status === 'SOLD_OUT' ? (
                     <CheckCircle2 className="h-5 w-5 text-teal-600" />
                   ) : (
                     <AlertCircle className="h-5 w-5 text-red-600" />
@@ -557,7 +559,9 @@ export const PublicCollectionPage: React.FC = () => {
                       ? 'Collection Temporarily Paused'
                       : isOutOfStock
                       ? 'Stock Unavailable — Sold Out'
-                      : isTargetReached || collection.status === 'COMPLETED'
+                      : isTargetReached ||
+                        collection.status === 'COMPLETED' ||
+                        collection.status === 'SOLD_OUT'
                       ? 'Collection Completed'
                       : 'Collection Closed'}
                   </h2>
@@ -566,7 +570,9 @@ export const PublicCollectionPage: React.FC = () => {
                       ? 'The organizer has temporarily paused incoming payments for this collection. Please check back later.'
                       : isOutOfStock
                       ? 'All available stock units for this pre-order have been claimed.'
-                      : isTargetReached || collection.status === 'COMPLETED'
+                      : isTargetReached ||
+                        collection.status === 'COMPLETED' ||
+                        collection.status === 'SOLD_OUT'
                       ? 'This collection has reached its goal and is no longer accepting new payments.'
                       : 'This collection has been closed by the organizer and is no longer accepting payments.'}
                   </p>
@@ -640,7 +646,11 @@ export const PublicCollectionPage: React.FC = () => {
                         : 'Contribution Amount (NGN)'
                     }
                     type="number"
-                    min={collection.pricingRule === 'MINIMUM' ? collection.amount : 100}
+                    min={
+                      collection.pricingRule === 'MINIMUM'
+                        ? Math.max(10, collection.amount)
+                        : 10
+                    }
                     max={collection.type === 'POOL' ? remainingPool : undefined}
                     required
                     leftAddon="₦"
@@ -663,7 +673,7 @@ export const PublicCollectionPage: React.FC = () => {
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Input
-                      label="Email address"
+                      label="Email address (for digital receipt)"
                       type="email"
                       required
                       autoComplete="email"

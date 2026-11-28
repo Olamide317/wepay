@@ -9,12 +9,14 @@ interface BaseFieldProps {
 }
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement>, BaseFieldProps {
+  labelAction?: React.ReactNode;
   leftAddon?: React.ReactNode;
   rightAddon?: React.ReactNode;
 }
 
 export const Input: React.FC<InputProps> = ({
   label,
+  labelAction,
   error,
   hint,
   required,
@@ -30,14 +32,17 @@ export const Input: React.FC<InputProps> = ({
 
   return (
     <div className="space-y-1.5">
-      <label htmlFor={fieldId} className="block text-sm font-medium text-slate-700">
-        {label}
-        {required ? (
-          <span className="text-red-600 ml-0.5">*</span>
-        ) : showOptionalHint ? (
-          <span className="text-xs font-normal text-slate-400 ml-1.5">(Optional)</span>
-        ) : null}
-      </label>
+      <div className="flex items-center justify-between gap-3">
+        <label htmlFor={fieldId} className="block text-sm font-medium text-slate-700">
+          {label}
+          {required ? (
+            <span className="text-red-600 ml-0.5">*</span>
+          ) : showOptionalHint ? (
+            <span className="text-xs font-normal text-slate-400 ml-1.5">(Optional)</span>
+          ) : null}
+        </label>
+        {labelAction}
+      </div>
       <div className="relative flex items-center">
         {leftAddon && (
           <div className="absolute left-3 text-slate-500 text-sm pointer-events-none select-none">

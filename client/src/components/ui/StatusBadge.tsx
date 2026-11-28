@@ -27,6 +27,11 @@ const STATUS_STYLE: Record<
     classes: 'bg-slate-100 text-slate-700 border-slate-200',
     Icon: CheckCircle2,
   },
+  SOLD_OUT: {
+    label: 'Sold out',
+    classes: 'bg-amber-50 text-amber-700 border-amber-200',
+    Icon: CheckCircle2,
+  },
   PAUSED: {
     label: 'Paused',
     classes: 'bg-[#f59e08]/10 text-[#92400e] border-[#f59e08]/30',

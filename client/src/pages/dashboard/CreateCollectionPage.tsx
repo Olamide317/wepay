@@ -34,9 +34,8 @@ interface FormErrors {
 }
 
 const AI_PRESET_PROMPTS = [
-  'Split ₦75,000 Starlink bill among 5 roommates',
-  'Pre-order 30 snack boxes at ₦2,500 asking for Hostel & Room',
-  'NACOS 300L departmental dues of ₦3,000 asking for Matric Number',
+  '100 NACOS dinner tickets at ₦5,000 with Matric Number',
+  '₦10 live pitch demo pass (2 slots)',
 ];
 
 export const CreateCollectionPage: React.FC = () => {
@@ -59,6 +58,7 @@ export const CreateCollectionPage: React.FC = () => {
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiNotice, setAiNotice] = useState<string | null>(null);
+  const [aiAuditTips, setAiAuditTips] = useState<string[]>([]);
 
   const [type, setType] = useState<CollectionType>(initialType);
   const [title, setTitle] = useState('');
@@ -94,7 +94,7 @@ export const CreateCollectionPage: React.FC = () => {
     setAiNotice(null);
     setSubmitError(null);
     try {
-      const { draft } = await wepayService.generateAiCollectionDraft(query);
+      const { draft, source } = await wepayService.draftCollectionWithAi(query);
       if (draft.type) setType(draft.type);
       if (draft.title) setTitle(draft.title);
       if (draft.description) setDescription(draft.description);
@@ -104,9 +104,10 @@ export const CreateCollectionPage: React.FC = () => {
       setStockLimit(draft.stockLimit ? String(draft.stockLimit) : '');
       if (draft.passFeeToPayer !== undefined) setPassFeeToPayer(Boolean(draft.passFeeToPayer));
       setCustomFields(Array.isArray(draft.customFields) ? draft.customFields : []);
+      setAiAuditTips(Array.isArray(draft.auditTips) ? draft.auditTips : []);
       setErrors({});
       setAiNotice(
-        `Configured via ${draft.engine || 'WePay AI'} — review the auto-filled fields below or publish immediately.`
+        `Configured via ${source === 'gemini' ? 'Gemini AI' : 'WePay smart fallback'} — review the auto-filled fields below or publish immediately.`
       );
     } catch (err) {
       setSubmitError(
@@ -140,15 +141,15 @@ export const CreateCollectionPage: React.FC = () => {
 
     const numAmount = Number(amount);
     if (pricingRule !== 'FLEXIBLE') {
-      if (!amount || !Number.isFinite(numAmount) || numAmount < 100) {
-        next.amount = 'Enter a valid Naira amount (minimum ₦100).';
+      if (!amount || !Number.isFinite(numAmount) || numAmount < 10) {
+        next.amount = 'Enter a valid Naira amount (minimum ₦10).';
       }
     }
 
     if (type === 'POOL') {
       const numTarget = Number(targetAmount);
-      if (!targetAmount || !Number.isFinite(numTarget) || numTarget < 500) {
-        next.targetAmount = 'Target amount must be at least ₦500.';
+      if (!targetAmount || !Number.isFinite(numTarget) || numTarget < 10) {
+        next.targetAmount = 'Target amount must be at least ₦10.';
       } else if (pricingRule === 'FIXED' && Number.isFinite(numAmount) && numAmount > numTarget) {
         next.amount = 'Contribution amount cannot exceed the pool target.';
       }
@@ -354,7 +355,7 @@ export const CreateCollectionPage: React.FC = () => {
               </div>
               <div>
                 <h2 className="text-sm font-bold text-slate-900">
-                  AI Smart Collection Builder
+                  Describe with WePay AI
                 </h2>
                 <p className="text-xs text-slate-600">
                   Describe what you are collecting and let WePay AI auto-configure mode, pricing, stock caps, and custom fields.
@@ -384,7 +385,7 @@ export const CreateCollectionPage: React.FC = () => {
               disabled={!aiPrompt.trim()}
             >
               {!aiGenerating && <Wand2 className="h-4 w-4" />}
-              <span>{aiGenerating ? 'Generating...' : 'Auto-Fill Form'}</span>
+              <span>{aiGenerating ? 'Generating...' : 'Generate Form'}</span>
             </Button>
           </div>
 
@@ -406,6 +407,18 @@ export const CreateCollectionPage: React.FC = () => {
             <div className="text-xs text-teal-800 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2 flex items-center gap-2">
               <CheckCircle2 className="h-3.5 w-3.5 text-teal-600 shrink-0" />
               <span>{aiNotice}</span>
+            </div>
+          )}
+          {aiAuditTips.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {aiAuditTips.map((tip) => (
+                <span
+                  key={tip}
+                  className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800"
+                >
+                  {tip}
+                </span>
+              ))}
             </div>
           )}
         </div>
@@ -565,7 +578,7 @@ export const CreateCollectionPage: React.FC = () => {
                         : 'Contribution Amount (NGN)'
                     }
                     type="number"
-                    min={100}
+                    min={10}
                     required
                     id="collection-amount"
                     leftAddon="₦"
@@ -580,7 +593,7 @@ export const CreateCollectionPage: React.FC = () => {
                   <Input
                     label="Pool Target Amount (NGN)"
                     type="number"
-                    min={500}
+                    min={10}
                     required
                     id="collection-target-amount"
                     leftAddon="₦"

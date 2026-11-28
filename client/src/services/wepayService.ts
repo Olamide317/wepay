@@ -1,7 +1,13 @@
 import {
+  AdminOverviewData,
   Collection,
   CollectionStatus,
   CreateCollectionInput,
+  AiNavigatorResponse,
+  AiCollectionDraft,
+  AiLedgerAnswer,
+  AiCollectionAnalysis,
+  AiFraudRadar,
   InterswitchCheckoutParams,
   Organizer,
   PaymentInitializeRequest,
@@ -30,6 +36,8 @@ function normalizeOrganizer(raw: any): Organizer {
     avatarUpdatedAt: raw?.avatarUpdatedAt,
     settlementBank: raw?.settlementBank,
     verified: Boolean(raw?.verified),
+    isFounder: Boolean(raw?.isFounder),
+    role: raw?.role === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'ORGANIZER',
     createdAt: raw?.createdAt || new Date().toISOString(),
   };
 }
@@ -97,6 +105,27 @@ export const wepayService = {
   // ---------------------------------------------------------------------------
   // AUTHENTICATION
   // ---------------------------------------------------------------------------
+  async requestPasswordReset(email: string): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    });
+  },
+
+  async resetPassword(
+    token: string,
+    password: string
+  ): Promise<{ token: string; user: Organizer }> {
+    const res = await apiRequest<{ token: string; user: unknown }>(
+      `/api/auth/reset-password/${encodeURIComponent(token)}`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ password }),
+      }
+    );
+    return { token: res.token, user: normalizeOrganizer(res.user) };
+  },
+
   async login(payload: { email: string; password: string; remember?: boolean }): Promise<{
     organizer: Organizer;
     token: string;
@@ -177,6 +206,69 @@ export const wepayService = {
       true
     );
     return normalizeOrganizer(res.organizer || res.user);
+  },
+
+  async askWePayNavigator(
+    message: string,
+    currentPath: string
+  ): Promise<AiNavigatorResponse> {
+    return apiRequest<AiNavigatorResponse>(
+      '/api/ai/navigate',
+      { method: 'POST', body: JSON.stringify({ message, currentPath }) },
+      false
+    );
+  },
+
+  async draftCollectionWithAi(prompt: string): Promise<{ draft: AiCollectionDraft; source: 'gemini' | 'smart-fallback' }> {
+    return apiRequest<{ draft: AiCollectionDraft; source: 'gemini' | 'smart-fallback' }>(
+      '/api/ai/draft-collection',
+      { method: 'POST', body: JSON.stringify({ prompt }) },
+      true
+    );
+  },
+
+  async askOrganizerLedger(question: string): Promise<AiLedgerAnswer> {
+    return apiRequest<AiLedgerAnswer>(
+      '/api/ai/ask-ledger',
+      { method: 'POST', body: JSON.stringify({ question }) },
+      true
+    );
+  },
+
+  async getCollectionAiInsights(collectionId: string): Promise<{ analysis: AiCollectionAnalysis; source: 'gemini' | 'smart-fallback' }> {
+    return apiRequest<{ analysis: AiCollectionAnalysis; source: 'gemini' | 'smart-fallback' }>(
+      `/api/ai/collections/${encodeURIComponent(collectionId)}/insights`,
+      {},
+      true
+    );
+  },
+
+  async getAdminFraudRadar(): Promise<{ radar: AiFraudRadar; source: 'gemini' | 'smart-fallback' }> {
+    return apiRequest<{ radar: AiFraudRadar; source: 'gemini' | 'smart-fallback' }>(
+      '/api/ai/admin/fraud-radar',
+      {},
+      true
+    );
+  },
+
+  async getAdminOverview(): Promise<AdminOverviewData> {
+    return apiRequest<AdminOverviewData>('/api/admin/overview', {}, true);
+  },
+
+  async exportAdminTransactionsCsv(): Promise<void> {
+    const csv = await apiRequest<string>(
+      '/api/admin/transactions/export.csv',
+      {},
+      true
+    );
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'wepay-platform-transactions.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   },
 
   // ---------------------------------------------------------------------------
