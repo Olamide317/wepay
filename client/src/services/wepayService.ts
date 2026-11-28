@@ -3,6 +3,11 @@ import {
   Collection,
   CollectionStatus,
   CreateCollectionInput,
+  AiNavigatorResponse,
+  AiCollectionDraft,
+  AiLedgerAnswer,
+  AiCollectionAnalysis,
+  AiFraudRadar,
   InterswitchCheckoutParams,
   Organizer,
   PaymentInitializeRequest,
@@ -470,6 +475,134 @@ export const wepayService = {
 
     const store = loadSandboxStore();
     return profilePictureService.resolveOrganizerAvatar(store.organizer);
+  },
+
+  async askWePayNavigator(
+    message: string,
+    currentPath: string
+  ): Promise<AiNavigatorResponse> {
+    if (isBackendConfigured()) {
+      return apiRequest<AiNavigatorResponse>(
+        '/api/ai/navigate',
+        { method: 'POST', body: JSON.stringify({ message, currentPath }) },
+        false
+      );
+    }
+    await delay(180);
+    const lower = message.toLowerCase();
+    if (/bank|account|payout/.test(lower)) {
+      return {
+        reply: 'Sign in, then open Profile to add or update your settlement bank account.',
+        actions: [{ label: 'Go to Profile', route: '/dashboard/profile', description: 'Add payout bank details' }],
+        source: 'smart-fallback',
+      };
+    }
+    if (/ticket|create|collection|link/.test(lower)) {
+      return {
+        reply: 'Open Create Collection to build a pool, open collection, or ticket link.',
+        actions: [{ label: 'Create Collection', route: '/dashboard/create', description: 'Build a new collection' }],
+        source: 'smart-fallback',
+      };
+    }
+    return {
+      reply: 'You can check payment records from the Transactions page or manage collections from Dashboard.',
+      actions: [
+        { label: 'Open Dashboard', route: '/dashboard', description: 'Organizer dashboard' },
+        { label: 'View Transactions', route: '/dashboard/transactions', description: 'Search payment records' },
+      ],
+      source: 'smart-fallback',
+    };
+  },
+
+  async draftCollectionWithAi(prompt: string): Promise<{ draft: AiCollectionDraft; source: 'gemini' | 'smart-fallback' }> {
+    if (isBackendConfigured()) {
+      return apiRequest<{ draft: AiCollectionDraft; source: 'gemini' | 'smart-fallback' }>(
+        '/api/ai/draft-collection',
+        { method: 'POST', body: JSON.stringify({ prompt }) },
+        true
+      );
+    }
+    await delay(350);
+    return {
+      draft: {
+        type: 'POOL',
+        title: prompt.slice(0, 60),
+        description: `Collection for ${prompt}`,
+        pricingRule: 'FIXED',
+        amount: 5000,
+        targetAmount: 25000,
+        passFeeToPayer: true,
+        customFields: [],
+        auditTips: ['Review the target and fee pass-through before publishing.'],
+      },
+      source: 'smart-fallback',
+    };
+  },
+
+  async askOrganizerLedger(question: string): Promise<AiLedgerAnswer> {
+    if (isBackendConfigured()) {
+      return apiRequest<AiLedgerAnswer>(
+        '/api/ai/ask-ledger',
+        { method: 'POST', body: JSON.stringify({ question }) },
+        true
+      );
+    }
+    const transactions = loadSandboxStore().transactions;
+    const success = transactions.filter((tx) => tx.status === 'SUCCESS');
+    const total = success.reduce((sum, tx) => sum + tx.baseAmount, 0);
+    return {
+      answer: `${success.length} successful payments raised ₦${total.toLocaleString('en-NG')}.`,
+      summaryMetric: `₦${total.toLocaleString('en-NG')}`,
+      matchedTransactionIds: success.map((tx) => tx._id),
+      source: 'smart-fallback',
+    };
+  },
+
+  async getCollectionAiInsights(collectionId: string): Promise<{ analysis: AiCollectionAnalysis; source: 'gemini' | 'smart-fallback' }> {
+    if (isBackendConfigured()) {
+      return apiRequest<{ analysis: AiCollectionAnalysis; source: 'gemini' | 'smart-fallback' }>(
+        `/api/ai/collections/${encodeURIComponent(collectionId)}/insights`,
+        {},
+        true
+      );
+    }
+    const collection = loadSandboxStore().collections.find((item) => item._id === collectionId);
+    if (!collection) throw new Error('Collection not found.');
+    const percent = collection.targetAmount
+      ? Math.min(100, Math.round((collection.amountRaised / collection.targetAmount) * 100))
+      : 0;
+    return {
+      analysis: {
+        headline: `${percent}% complete`,
+        insights: [
+          `${collection.contributorCount || 0} contributors have joined.`,
+          `₦${collection.amountRaised.toLocaleString('en-NG')} has been collected.`,
+          collection.status === 'ACTIVE' ? 'The public link is accepting payments.' : `The collection is ${collection.status.toLowerCase()}.`,
+        ],
+        whatsappBroadcast: `Support ${collection.title}: ${typeof window !== 'undefined' ? window.location.origin : ''}/c/${collection.slug}`,
+        urgencyLevel: percent >= 80 ? 'HIGH' : percent >= 50 ? 'MEDIUM' : 'LOW',
+      },
+      source: 'smart-fallback',
+    };
+  },
+
+  async getAdminFraudRadar(): Promise<{ radar: AiFraudRadar; source: 'gemini' | 'smart-fallback' }> {
+    if (isBackendConfigured()) {
+      return apiRequest<{ radar: AiFraudRadar; source: 'gemini' | 'smart-fallback' }>(
+        '/api/ai/admin/fraud-radar',
+        {},
+        true
+      );
+    }
+    return {
+      radar: {
+        riskLevel: 'LOW',
+        headline: 'No urgent platform risk detected',
+        findings: [{ title: 'Sandbox mode', detail: 'Platform risk scanning is using local demo data.', severity: 'INFO' }],
+        recommendations: ['Connect the backend and live transaction data for full anomaly detection.'],
+      },
+      source: 'smart-fallback',
+    };
   },
 
   async getAdminOverview(): Promise<AdminOverviewData> {

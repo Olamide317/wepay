@@ -13,6 +13,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const collectionRoutes = require("./routes/collectionRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const profileRoutes = require("./routes/profileRoutes");
+const aiRoutes = require("./routes/aiRoutes");
 
 const app = express();
 
@@ -87,6 +88,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/collections", collectionRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/ai", aiRoutes);
 app.get("/api/public/u/:handle", getOrganizerPublicHub);
 app.get("/api/public/c/:slug", getCollectionBySlug);
 app.get("/api/public/receipts/:receiptCode", getReceipt);

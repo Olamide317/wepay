@@ -29,6 +29,7 @@ const swaggerSpec = {
     { name: "Payments", description: "Interswitch IPG checkout initiation, server requery & ledger" },
     { name: "Receipts", description: "SHA-256 QR-verified digital receipts" },
     { name: "Admin", description: "Founder-only platform telemetry and transaction export" },
+    { name: "AI", description: "WePay Gemini-assisted and deterministic fallback intelligence" },
   ],
   components: {
     securitySchemes: {
@@ -1041,6 +1042,100 @@ const swaggerSpec = {
             },
           },
           404: { description: "Invalid or unknown receipt code" },
+        },
+      },
+    },
+    "/ai/navigate": {
+      post: {
+        tags: ["AI"],
+        summary: "Ask the WePay in-app guide",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["message"],
+                properties: {
+                  message: { type: "string", example: "How I go check who don pay?" },
+                  currentPath: { type: "string", example: "/dashboard" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: "Navigation reply and clickable route actions" },
+          500: { description: "AI navigator unavailable" },
+        },
+      },
+    },
+    "/ai/draft-collection": {
+      post: {
+        tags: ["AI"],
+        summary: "Generate a collection draft from a natural-language prompt",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["prompt"],
+                properties: { prompt: { type: "string", example: "100 NACOS dinner tickets at ₦5000 with Matric Number" } },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: "Collection draft and AI source" },
+          401: { description: "Unauthorized" },
+        },
+      },
+    },
+    "/ai/ask-ledger": {
+      post: {
+        tags: ["AI"],
+        summary: "Ask natural-language questions about organizer transactions",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["question"],
+                properties: { question: { type: "string", example: "How much have we raised?" } },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: "Exact deterministic or Gemini ledger answer" },
+          401: { description: "Unauthorized" },
+        },
+      },
+    },
+    "/ai/collections/{id}/insights": {
+      get: {
+        tags: ["AI"],
+        summary: "Analyze collection progress and generate a WhatsApp nudge",
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          200: { description: "Collection insights, broadcast, and urgency" },
+          404: { description: "Collection not found or not owned by organizer" },
+        },
+      },
+    },
+    "/ai/admin/fraud-radar": {
+      get: {
+        tags: ["AI"],
+        summary: "Scan platform-wide transactions for anomalies",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: "Risk level, findings, and recommendations" },
+          403: { description: "Founder access required" },
         },
       },
     },

@@ -210,3 +210,57 @@ export interface CreateCollectionInput {
   customFields: CustomField[];
   expiresAt?: string;
 }
+
+export interface AiNavigatorAction {
+  label: string;
+  route: string;
+  description: string;
+}
+
+export interface AiNavigatorResponse {
+  reply: string;
+  actions: AiNavigatorAction[];
+  source: 'gemini' | 'smart-fallback';
+}
+
+export interface AiCollectionDraft {
+  title?: string;
+  description?: string;
+  type?: CollectionType;
+  mode?: 'SPLIT' | 'FLEXIBLE';
+  pricingRule?: PricingRule;
+  amount?: number;
+  targetAmount?: number;
+  stockLimit?: number;
+  passFeeToPayer?: boolean;
+  customFields?: CustomField[];
+  auditTips?: string[];
+  engine?: string;
+}
+
+export interface AiLedgerAnswer {
+  answer: string;
+  summaryMetric: string;
+  matchedTransactionIds: string[];
+  source: 'gemini' | 'smart-fallback';
+}
+
+export interface AiCollectionAnalysis {
+  headline: string;
+  insights: string[];
+  whatsappBroadcast: string;
+  urgencyLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+}
+
+export interface AiFraudFinding {
+  title: string;
+  detail: string;
+  severity: 'INFO' | 'WARN' | 'ALERT';
+}
+
+export interface AiFraudRadar {
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  headline: string;
+  findings: AiFraudFinding[];
+  recommendations: string[];
+}

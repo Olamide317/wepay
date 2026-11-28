@@ -18,6 +18,7 @@ import { DashboardOverviewPage } from './pages/dashboard/DashboardOverviewPage';
 import { MyCollectionsPage } from './pages/dashboard/MyCollectionsPage';
 import { ProductOverviewPage } from './pages/dashboard/ProductOverviewPage';
 import { ProfilePage } from './pages/dashboard/ProfilePage';
+import { WePayAiNavigator } from './components/WePayAiNavigator';
 
 const FounderAdminGuard: React.FC = () => {
   const { organizer, isLoading } = useAuth();
@@ -38,6 +39,7 @@ export function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <WePayAiNavigator />
         <Routes>
           {/* Default Root Route: WePay Overview */}
           <Route path="/" element={<OrganizerLayout requireAuth={false} />}>
