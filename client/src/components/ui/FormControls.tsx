@@ -54,7 +54,7 @@ export const Input: React.FC<InputProps> = ({
           required={required}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
-          className={`w-full h-11 rounded-xl border bg-white text-sm text-slate-900 placeholder:text-slate-400 transition-[border-color,box-shadow,background-color] duration-150 focus:outline-none focus:ring-4 focus:ring-indigo-600/10 focus:border-indigo-600 disabled:bg-slate-50 disabled:text-slate-500 ${
+          className={`w-full h-11 rounded-lg border bg-white text-sm text-slate-900 placeholder:text-slate-400 transition-[border-color,box-shadow,background-color] duration-150 focus:outline-none focus:ring-1 focus:ring-teal-700 focus:border-teal-700 disabled:bg-slate-50 disabled:text-slate-500 ${
             error ? 'border-red-500 focus:border-red-600 focus:ring-red-600/20' : 'border-slate-200'
           } ${leftAddon ? 'pl-9' : 'px-3.5'} ${rightAddon ? 'pr-11' : 'pr-3.5'} ${className}`}
           {...rest}
@@ -106,7 +106,7 @@ export const Textarea: React.FC<TextareaProps> = ({
         rows={rows}
         required={required}
         aria-invalid={Boolean(error)}
-        className={`w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition-[border-color,box-shadow,background-color] duration-150 focus:outline-none focus:ring-4 focus:ring-indigo-600/10 focus:border-indigo-600 disabled:bg-slate-50 ${
+        className={`w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition-[border-color,box-shadow,background-color] duration-150 focus:outline-none focus:ring-1 focus:ring-teal-700 focus:border-teal-700 disabled:bg-slate-50 ${
           error ? 'border-red-500 focus:border-red-600 focus:ring-red-600/20' : 'border-slate-200'
         } ${className}`}
         {...rest}
@@ -147,7 +147,7 @@ export const Select: React.FC<SelectProps> = ({
         id={fieldId}
         required={required}
         aria-invalid={Boolean(error)}
-        className={`w-full h-11 rounded-xl border bg-white px-3.5 text-sm text-slate-900 transition-[border-color,box-shadow,background-color] duration-150 focus:outline-none focus:ring-4 focus:ring-indigo-600/10 focus:border-indigo-600 disabled:bg-slate-50 ${
+        className={`w-full h-11 rounded-lg border bg-white px-3.5 text-sm text-slate-900 transition-[border-color,box-shadow,background-color] duration-150 focus:outline-none focus:ring-1 focus:ring-teal-700 focus:border-teal-700 disabled:bg-slate-50 ${
           error ? 'border-red-500 focus:border-red-600 focus:ring-red-600/20' : 'border-slate-200'
         } ${className}`}
         {...rest}
@@ -175,7 +175,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({ label, error, id, className 
         <input
           id={fieldId}
           type="checkbox"
-          className={`mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer ${className}`}
+          className={`mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-700 cursor-pointer ${className}`}
           {...rest}
         />
         <span className="text-sm text-slate-600 leading-snug">{label}</span>

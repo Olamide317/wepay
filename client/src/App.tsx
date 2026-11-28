@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { OrganizerLayout } from './layouts/OrganizerLayout';
+import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { OrganizerHubPage } from './pages/OrganizerHubPage';
 import { FounderAdminPage } from './pages/admin/FounderAdminPage';
@@ -16,8 +17,8 @@ import { CollectionLedgerPage } from './pages/dashboard/CollectionLedgerPage';
 import { CreateCollectionPage } from './pages/dashboard/CreateCollectionPage';
 import { DashboardOverviewPage } from './pages/dashboard/DashboardOverviewPage';
 import { MyCollectionsPage } from './pages/dashboard/MyCollectionsPage';
-import { ProductOverviewPage } from './pages/dashboard/ProductOverviewPage';
 import { ProfilePage } from './pages/dashboard/ProfilePage';
+import { ToastProvider } from './components/ui/Toast';
 import { WePayAiNavigator } from './components/WePayAiNavigator';
 
 const FounderAdminGuard: React.FC = () => {
@@ -37,23 +38,22 @@ const FounderAdminGuard: React.FC = () => {
 
 export function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <WePayAiNavigator />
-        <Routes>
-          {/* Default Root Route: WePay Overview */}
-          <Route path="/" element={<OrganizerLayout requireAuth={false} />}>
-            <Route index element={<ProductOverviewPage />} />
-          </Route>
+    <ToastProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <WePayAiNavigator />
+          <Routes>
+            {/* Public marketing route */}
+            <Route path="/" element={<LandingPage />} />
 
-          {/* Public Routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
-          <Route path="/c/:slug" element={<PublicCollectionPage />} />
-          <Route path="/u/:handle" element={<OrganizerHubPage />} />
-          <Route path="/receipt/:code" element={<ReceiptPage />} />
+            {/* Public Routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+            <Route path="/c/:slug" element={<PublicCollectionPage />} />
+            <Route path="/u/:handle" element={<OrganizerHubPage />} />
+            <Route path="/receipt/:code" element={<ReceiptPage />} />
 
           <Route element={<FounderAdminGuard />}>
             <Route path="/admin" element={<OrganizerLayout />}>
@@ -75,9 +75,10 @@ export function App() {
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ToastProvider>
   );
 }
 

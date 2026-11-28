@@ -16,25 +16,7 @@ import {
   Transaction,
 } from '../types/wepay';
 import { formatDisplayName, slugify } from '../utils/formatters';
-import { apiRequest, isBackendConfigured, setAuthToken } from './apiClient';
-import { clearAllAvatarsFromIndexedDb } from './avatarStorage';
-import {
-  DEFAULT_ORGANIZER_AVATAR_URL,
-  MOCK_COLLECTIONS,
-  MOCK_ORGANIZER,
-  MOCK_TRANSACTIONS,
-} from './mockData';
-import { profilePictureService } from './profilePictureService';
-
-const STORE_KEY = 'wepay_sandbox_store_v1';
-
-interface SandboxStore {
-  organizer: Organizer;
-  organizersByEmail?: Record<string, Organizer>;
-  collections: Collection[];
-  transactions: Transaction[];
-  registeredEmail?: string;
-}
+import { apiRequest, setAuthToken } from './apiClient';
 
 // Normalizes backend { user } or { organizer } objects into Joshua's Organizer interface
 function normalizeOrganizer(raw: any): Organizer {
@@ -50,7 +32,7 @@ function normalizeOrganizer(raw: any): Organizer {
     phone: String(raw?.phone || ''),
     handle,
     avatarUrl: raw?.avatarUrl,
-    avatarStorage: raw?.avatarStorage || (raw?.avatarUrl ? 'remote' : 'none'),
+    avatarStorage: raw?.avatarUrl ? 'remote' : 'none',
     avatarUpdatedAt: raw?.avatarUpdatedAt,
     settlementBank: raw?.settlementBank,
     verified: Boolean(raw?.verified),
@@ -119,132 +101,11 @@ function normalizeTransaction(raw: Transaction): Transaction {
   };
 }
 
-function sanitizeOrganizerForStorage(org: Organizer): Organizer {
-  if (org.avatarStorage === 'local_indexeddb') {
-    const { avatarUrl: _omitBlobUrl, ...rest } = org;
-    return rest;
-  }
-  return org;
-}
-
-const LEGACY_DEFAULT_AVATAR_URL = '/src/assets/images/organizer_avatar_1795712850216.jpg';
-
-function sanitizeInheritedDemoFields(org: Organizer): { org: Organizer; changed: boolean } {
-  let next = org;
-  let changed = false;
-
-  if (next.avatarUrl === LEGACY_DEFAULT_AVATAR_URL) {
-    next = { ...next, avatarUrl: DEFAULT_ORGANIZER_AVATAR_URL };
-    changed = true;
-  }
-
-  const isDemoAccount =
-    next._id === MOCK_ORGANIZER._id ||
-    next.email.toLowerCase() === MOCK_ORGANIZER.email.toLowerCase();
-
-  if (
-    !isDemoAccount &&
-    next.settlementBank?.accountNumber === MOCK_ORGANIZER.settlementBank?.accountNumber &&
-    next.settlementBank?.accountName === MOCK_ORGANIZER.settlementBank?.accountName
-  ) {
-    next = { ...next, settlementBank: undefined, verified: false };
-    changed = true;
-  }
-
-  return { org: next, changed };
-}
-
-function loadSandboxStore(): SandboxStore {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as SandboxStore;
-      if (parsed && Array.isArray(parsed.collections) && Array.isArray(parsed.transactions)) {
-        let migrated = false;
-        if (parsed.organizer) {
-          const res = sanitizeInheritedDemoFields(parsed.organizer);
-          if (res.changed) {
-            parsed.organizer = res.org;
-            migrated = true;
-          }
-        }
-        if (parsed.organizersByEmail) {
-          Object.keys(parsed.organizersByEmail).forEach((key) => {
-            const res = sanitizeInheritedDemoFields(parsed.organizersByEmail![key]);
-            if (res.changed) {
-              parsed.organizersByEmail![key] = res.org;
-              migrated = true;
-            }
-          });
-        }
-        if (migrated) {
-          saveSandboxStore(parsed);
-        }
-        return parsed;
-      }
-    }
-  } catch {
-    // Fall back to initial mock seed
-  }
-  const initialOrganizer = { ...MOCK_ORGANIZER };
-  const initial: SandboxStore = {
-    organizer: initialOrganizer,
-    organizersByEmail: {
-      [initialOrganizer.email.toLowerCase()]: initialOrganizer,
-    },
-    collections: MOCK_COLLECTIONS.map((c) => ({ ...c })),
-    transactions: MOCK_TRANSACTIONS.map((t) => ({ ...t })),
-  };
-  saveSandboxStore(initial);
-  return initial;
-}
-
-function saveSandboxStore(store: SandboxStore): void {
-  try {
-    const sanitizedOrganizer = sanitizeOrganizerForStorage(store.organizer);
-    const sanitizedMap: Record<string, Organizer> = {
-      ...(store.organizersByEmail || {}),
-      [sanitizedOrganizer.email.toLowerCase()]: sanitizedOrganizer,
-    };
-    Object.keys(sanitizedMap).forEach((key) => {
-      sanitizedMap[key] = sanitizeOrganizerForStorage(sanitizedMap[key]);
-    });
-    const toPersist: SandboxStore = {
-      ...store,
-      organizer: sanitizedOrganizer,
-      organizersByEmail: sanitizedMap,
-    };
-    localStorage.setItem(STORE_KEY, JSON.stringify(toPersist));
-  } catch {
-    // Ignore storage quota issues
-  }
-}
-
-function delay(ms = 320): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-export function resetSandboxData(): void {
-  try {
-    localStorage.removeItem(STORE_KEY);
-  } catch {
-    // Ignore
-  }
-  void clearAllAvatarsFromIndexedDb();
-}
-
 export const wepayService = {
-  isMockMode(): boolean {
-    return !isBackendConfigured();
-  },
-
   // ---------------------------------------------------------------------------
   // AUTHENTICATION
   // ---------------------------------------------------------------------------
   async requestPasswordReset(email: string): Promise<{ message: string }> {
-    if (!isBackendConfigured()) {
-      throw new Error('Password recovery requires the WePay backend.');
-    }
     return apiRequest<{ message: string }>('/api/auth/forgot-password', {
       method: 'POST',
       body: JSON.stringify({ email: email.trim().toLowerCase() }),
@@ -255,9 +116,6 @@ export const wepayService = {
     token: string,
     password: string
   ): Promise<{ token: string; user: Organizer }> {
-    if (!isBackendConfigured()) {
-      throw new Error('Password recovery requires the WePay backend.');
-    }
     const res = await apiRequest<{ token: string; user: unknown }>(
       `/api/auth/reset-password/${encodeURIComponent(token)}`,
       {
@@ -271,64 +129,16 @@ export const wepayService = {
   async login(payload: { email: string; password: string; remember?: boolean }): Promise<{
     organizer: Organizer;
     token: string;
-    isMock: boolean;
   }> {
-    if (isBackendConfigured()) {
-      const res = await apiRequest<{ token: string; organizer?: unknown; user?: unknown }>(
-        '/api/auth/login',
-        {
-          method: 'POST',
-          body: JSON.stringify({ email: payload.email, password: payload.password }),
-        }
-      );
-      setAuthToken(res.token, payload.remember ?? true);
-      const organizer = normalizeOrganizer(res.organizer || res.user);
-      return { organizer, token: res.token, isMock: false };
-    }
-
-    await delay(450);
-    if (!payload.email.trim() || payload.password.length < 6) {
-      throw new Error('Invalid email or password. Password must be at least 6 characters.');
-    }
-    if (payload.email.trim().toLowerCase() === 'fail@wepay.ng') {
-      throw new Error('Authentication failed: No organizer account found for this email.');
-    }
-
-    const store = loadSandboxStore();
-    const normalizedEmail = payload.email.trim().toLowerCase();
-    const existingAccount = store.organizersByEmail?.[normalizedEmail];
-
-    if (existingAccount) {
-      store.organizer = existingAccount;
-      saveSandboxStore(store);
-    } else if (normalizedEmail === MOCK_ORGANIZER.email.toLowerCase()) {
-      store.organizer = { ...MOCK_ORGANIZER };
-      saveSandboxStore(store);
-    } else if (normalizedEmail !== store.organizer.email.toLowerCase()) {
-      const localPart = payload.email.trim().split('@')[0] || 'Organizer';
-      const derivedName = localPart
-        .replace(/[._-]+/g, ' ')
-        .replace(/\b\w/g, (ch) => ch.toUpperCase());
-      store.organizer = {
-        _id: `org_${Date.now()}`,
-        fullName: derivedName,
-        email: payload.email.trim(),
-        phone: '',
-        handle: slugify(localPart) || `org-${Date.now().toString().slice(-4)}`,
-        avatarUrl: undefined,
-        avatarStorage: 'none',
-        avatarUpdatedAt: undefined,
-        settlementBank: undefined,
-        verified: false,
-        createdAt: new Date().toISOString(),
-      };
-      saveSandboxStore(store);
-    }
-
-    const hydrated = await profilePictureService.resolveOrganizerAvatar(store.organizer);
-    const demoToken = 'sandbox_jwt_demo_token';
-    setAuthToken(demoToken, payload.remember ?? true);
-    return { organizer: hydrated, token: demoToken, isMock: true };
+    const res = await apiRequest<{ token: string; organizer?: unknown; user?: unknown }>(
+      '/api/auth/login',
+      {
+        method: 'POST',
+        body: JSON.stringify({ email: payload.email, password: payload.password }),
+      }
+    );
+    setAuthToken(res.token, payload.remember ?? true);
+    return { organizer: normalizeOrganizer(res.organizer || res.user), token: res.token };
   },
 
   async register(payload: {
@@ -337,272 +147,108 @@ export const wepayService = {
     phone: string;
     handle: string;
     password: string;
-  }): Promise<{ organizer: Organizer; token: string; isMock: boolean }> {
-    if (isBackendConfigured()) {
-      const res = await apiRequest<{ token: string; organizer?: unknown; user?: unknown }>(
-        '/api/auth/register',
-        {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        }
-      );
-      setAuthToken(res.token, true);
-      const organizer = normalizeOrganizer(res.organizer || res.user);
-      return { organizer, token: res.token, isMock: false };
-    }
-
-    await delay(550);
-    const store = loadSandboxStore();
-    const newOrganizer: Organizer = {
-      _id: `org_${Date.now()}`,
-      fullName: payload.fullName.trim(),
-      email: payload.email.trim(),
-      phone: payload.phone.trim(),
-      handle: slugify(payload.handle) || 'organizer',
-      avatarUrl: undefined,
-      avatarStorage: 'none',
-      avatarUpdatedAt: undefined,
-      settlementBank: undefined,
-      verified: false,
-      createdAt: new Date().toISOString(),
-    };
-    store.organizer = newOrganizer;
-    saveSandboxStore(store);
-
-    const demoToken = 'sandbox_jwt_demo_token';
-    setAuthToken(demoToken, true);
-    return { organizer: newOrganizer, token: demoToken, isMock: true };
+  }): Promise<{ organizer: Organizer; token: string }> {
+    const res = await apiRequest<{ token: string; organizer?: unknown; user?: unknown }>(
+      '/api/auth/register',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+    setAuthToken(res.token, true);
+    return { organizer: normalizeOrganizer(res.organizer || res.user), token: res.token };
   },
 
-  async updateSettlementBank(bank: SettlementBank): Promise<{ organizer: Organizer; isMock: boolean }> {
-    if (isBackendConfigured()) {
-      const res = await apiRequest<{ organizer?: unknown; user?: unknown }>(
-        '/api/profile/bank',
-        {
-          method: 'POST',
-          body: JSON.stringify(bank),
-        },
-        true
-      );
-      return { organizer: normalizeOrganizer(res.organizer || res.user), isMock: false };
-    }
-
-    await delay(400);
-    const store = loadSandboxStore();
-    store.organizer = {
-      ...store.organizer,
-      settlementBank: bank,
-    };
-    saveSandboxStore(store);
-    const hydrated = await profilePictureService.resolveOrganizerAvatar(store.organizer);
-    return { organizer: hydrated, isMock: true };
+  async updateSettlementBank(bank: SettlementBank): Promise<{ organizer: Organizer }> {
+    const res = await apiRequest<{ organizer?: unknown; user?: unknown }>(
+      '/api/profile/bank',
+      {
+        method: 'POST',
+        body: JSON.stringify(bank),
+      },
+      true
+    );
+    return { organizer: normalizeOrganizer(res.organizer || res.user) };
   },
 
-  async updateOrganizerName(fullName: string): Promise<{ organizer: Organizer; isMock: boolean }> {
+  async updateOrganizerName(fullName: string): Promise<{ organizer: Organizer }> {
     const trimmed = fullName.trim();
     if (trimmed.length < 2) {
       throw new Error('Full name must be at least 2 characters.');
     }
 
-    if (isBackendConfigured()) {
-      throw new Error(
-        'Server-side profile name update endpoint is not yet enabled on the configured backend.'
-      );
-    }
-
-    await delay(300);
-    const store = loadSandboxStore();
-    store.organizer = {
-      ...store.organizer,
-      fullName: trimmed,
-    };
-    store.collections = store.collections.map((col) =>
-      col.organizerId === store.organizer._id ? { ...col, organizerName: trimmed } : col
+    throw new Error(
+      'Server-side profile name update endpoint is not yet enabled on the configured backend.'
     );
-    saveSandboxStore(store);
-    const hydrated = await profilePictureService.resolveOrganizerAvatar(store.organizer);
-    return { organizer: hydrated, isMock: true };
   },
 
   async updateProfilePicture(
     imageBlob: Blob,
     fileName: string
-  ): Promise<{ organizer: Organizer; isMock: boolean }> {
-    const store = loadSandboxStore();
-    const uploadResult = await profilePictureService.uploadProfilePicture(
-      store.organizer._id,
-      imageBlob,
-      fileName
+  ): Promise<{ organizer: Organizer }> {
+    void imageBlob;
+    void fileName;
+    throw new Error(
+      'Server-side profile picture upload endpoint is not yet enabled on the configured backend.'
     );
-
-    const updatedOrganizer: Organizer = {
-      ...store.organizer,
-      avatarUrl: uploadResult.avatarUrl,
-      avatarStorage: uploadResult.avatarStorage,
-      avatarUpdatedAt: uploadResult.updatedAt,
-    };
-
-    store.organizer = updatedOrganizer;
-    saveSandboxStore(store);
-    return { organizer: updatedOrganizer, isMock: uploadResult.avatarStorage === 'local_indexeddb' };
   },
 
-  async removeProfilePicture(): Promise<{ organizer: Organizer; isMock: boolean }> {
-    const store = loadSandboxStore();
-    await profilePictureService.removeProfilePicture(store.organizer._id);
-
-    const updatedOrganizer: Organizer = {
-      ...store.organizer,
-      avatarUrl: undefined,
-      avatarStorage: 'none',
-      avatarUpdatedAt: new Date().toISOString(),
-    };
-
-    store.organizer = updatedOrganizer;
-    saveSandboxStore(store);
-    return { organizer: updatedOrganizer, isMock: !isBackendConfigured() };
+  async removeProfilePicture(): Promise<{ organizer: Organizer }> {
+    throw new Error(
+      'Server-side profile picture removal endpoint is not yet enabled on the configured backend.'
+    );
   },
 
   async getCurrentOrganizer(): Promise<Organizer> {
-    if (isBackendConfigured()) {
-      const res = await apiRequest<{ organizer?: unknown; user?: unknown }>(
-        '/api/auth/me',
-        {},
-        true
-      );
-      return normalizeOrganizer(res.organizer || res.user);
-    }
-
-    const store = loadSandboxStore();
-    return profilePictureService.resolveOrganizerAvatar(store.organizer);
+    const res = await apiRequest<{ organizer?: unknown; user?: unknown }>(
+      '/api/auth/me',
+      {},
+      true
+    );
+    return normalizeOrganizer(res.organizer || res.user);
   },
 
   async askWePayNavigator(
     message: string,
     currentPath: string
   ): Promise<AiNavigatorResponse> {
-    if (isBackendConfigured()) {
-      return apiRequest<AiNavigatorResponse>(
-        '/api/ai/navigate',
-        { method: 'POST', body: JSON.stringify({ message, currentPath }) },
-        false
-      );
-    }
-    await delay(180);
-    const lower = message.toLowerCase();
-    if (/bank|account|payout/.test(lower)) {
-      return {
-        reply: 'Sign in, then open Profile to add or update your settlement bank account.',
-        actions: [{ label: 'Go to Profile', route: '/dashboard/profile', description: 'Add payout bank details' }],
-        source: 'smart-fallback',
-      };
-    }
-    if (/ticket|create|collection|link/.test(lower)) {
-      return {
-        reply: 'Open Create Collection to build a pool, open collection, or ticket link.',
-        actions: [{ label: 'Create Collection', route: '/dashboard/create', description: 'Build a new collection' }],
-        source: 'smart-fallback',
-      };
-    }
-    return {
-      reply: 'You can check payment records from the Transactions page or manage collections from Dashboard.',
-      actions: [
-        { label: 'Open Dashboard', route: '/dashboard', description: 'Organizer dashboard' },
-        { label: 'View Transactions', route: '/dashboard/transactions', description: 'Search payment records' },
-      ],
-      source: 'smart-fallback',
-    };
+    return apiRequest<AiNavigatorResponse>(
+      '/api/ai/navigate',
+      { method: 'POST', body: JSON.stringify({ message, currentPath }) },
+      false
+    );
   },
 
   async draftCollectionWithAi(prompt: string): Promise<{ draft: AiCollectionDraft; source: 'gemini' | 'smart-fallback' }> {
-    if (isBackendConfigured()) {
-      return apiRequest<{ draft: AiCollectionDraft; source: 'gemini' | 'smart-fallback' }>(
-        '/api/ai/draft-collection',
-        { method: 'POST', body: JSON.stringify({ prompt }) },
-        true
-      );
-    }
-    await delay(350);
-    return {
-      draft: {
-        type: 'POOL',
-        title: prompt.slice(0, 60),
-        description: `Collection for ${prompt}`,
-        pricingRule: 'FIXED',
-        amount: 5000,
-        targetAmount: 25000,
-        passFeeToPayer: true,
-        customFields: [],
-        auditTips: ['Review the target and fee pass-through before publishing.'],
-      },
-      source: 'smart-fallback',
-    };
+    return apiRequest<{ draft: AiCollectionDraft; source: 'gemini' | 'smart-fallback' }>(
+      '/api/ai/draft-collection',
+      { method: 'POST', body: JSON.stringify({ prompt }) },
+      true
+    );
   },
 
   async askOrganizerLedger(question: string): Promise<AiLedgerAnswer> {
-    if (isBackendConfigured()) {
-      return apiRequest<AiLedgerAnswer>(
-        '/api/ai/ask-ledger',
-        { method: 'POST', body: JSON.stringify({ question }) },
-        true
-      );
-    }
-    const transactions = loadSandboxStore().transactions;
-    const success = transactions.filter((tx) => tx.status === 'SUCCESS');
-    const total = success.reduce((sum, tx) => sum + tx.baseAmount, 0);
-    return {
-      answer: `${success.length} successful payments raised ₦${total.toLocaleString('en-NG')}.`,
-      summaryMetric: `₦${total.toLocaleString('en-NG')}`,
-      matchedTransactionIds: success.map((tx) => tx._id),
-      source: 'smart-fallback',
-    };
+    return apiRequest<AiLedgerAnswer>(
+      '/api/ai/ask-ledger',
+      { method: 'POST', body: JSON.stringify({ question }) },
+      true
+    );
   },
 
   async getCollectionAiInsights(collectionId: string): Promise<{ analysis: AiCollectionAnalysis; source: 'gemini' | 'smart-fallback' }> {
-    if (isBackendConfigured()) {
-      return apiRequest<{ analysis: AiCollectionAnalysis; source: 'gemini' | 'smart-fallback' }>(
-        `/api/ai/collections/${encodeURIComponent(collectionId)}/insights`,
-        {},
-        true
-      );
-    }
-    const collection = loadSandboxStore().collections.find((item) => item._id === collectionId);
-    if (!collection) throw new Error('Collection not found.');
-    const percent = collection.targetAmount
-      ? Math.min(100, Math.round((collection.amountRaised / collection.targetAmount) * 100))
-      : 0;
-    return {
-      analysis: {
-        headline: `${percent}% complete`,
-        insights: [
-          `${collection.contributorCount || 0} contributors have joined.`,
-          `₦${collection.amountRaised.toLocaleString('en-NG')} has been collected.`,
-          collection.status === 'ACTIVE' ? 'The public link is accepting payments.' : `The collection is ${collection.status.toLowerCase()}.`,
-        ],
-        whatsappBroadcast: `Support ${collection.title}: ${typeof window !== 'undefined' ? window.location.origin : ''}/c/${collection.slug}`,
-        urgencyLevel: percent >= 80 ? 'HIGH' : percent >= 50 ? 'MEDIUM' : 'LOW',
-      },
-      source: 'smart-fallback',
-    };
+    return apiRequest<{ analysis: AiCollectionAnalysis; source: 'gemini' | 'smart-fallback' }>(
+      `/api/ai/collections/${encodeURIComponent(collectionId)}/insights`,
+      {},
+      true
+    );
   },
 
   async getAdminFraudRadar(): Promise<{ radar: AiFraudRadar; source: 'gemini' | 'smart-fallback' }> {
-    if (isBackendConfigured()) {
-      return apiRequest<{ radar: AiFraudRadar; source: 'gemini' | 'smart-fallback' }>(
-        '/api/ai/admin/fraud-radar',
-        {},
-        true
-      );
-    }
-    return {
-      radar: {
-        riskLevel: 'LOW',
-        headline: 'No urgent platform risk detected',
-        findings: [{ title: 'Sandbox mode', detail: 'Platform risk scanning is using local demo data.', severity: 'INFO' }],
-        recommendations: ['Connect the backend and live transaction data for full anomaly detection.'],
-      },
-      source: 'smart-fallback',
-    };
+    return apiRequest<{ radar: AiFraudRadar; source: 'gemini' | 'smart-fallback' }>(
+      '/api/ai/admin/fraud-radar',
+      {},
+      true
+    );
   },
 
   async getAdminOverview(): Promise<AdminOverviewData> {
@@ -628,252 +274,127 @@ export const wepayService = {
   // ---------------------------------------------------------------------------
   // COLLECTION MANAGEMENT (ORGANIZER)
   // ---------------------------------------------------------------------------
-  async getCollections(): Promise<{ collections: Collection[]; isMock: boolean }> {
-    if (isBackendConfigured()) {
-      const res = await apiRequest<{ collections: unknown[] }>('/api/collections', {}, true);
-      const normalized = Array.isArray(res.collections)
-        ? res.collections.map(normalizeCollection)
-        : [];
-      return { collections: normalized, isMock: false };
-    }
-
-    await delay(280);
-    const store = loadSandboxStore();
-    const enriched = store.collections.map((col) => {
-      const successTxs = store.transactions.filter(
-        (t) => t.collectionId === col._id && t.status === 'SUCCESS'
-      );
-      return {
-        ...col,
-        contributorCount: Math.max(col.contributorCount ?? 0, successTxs.length),
-      };
-    });
-    return { collections: enriched, isMock: true };
+  async getCollections(): Promise<{ collections: Collection[] }> {
+    const res = await apiRequest<{ collections: unknown[] }>('/api/collections', {}, true);
+    const normalized = Array.isArray(res.collections)
+      ? res.collections.map(normalizeCollection)
+      : [];
+    return { collections: normalized };
   },
 
-  async getCollectionById(id: string): Promise<{ collection: Collection; isMock: boolean }> {
-    const { collections, isMock } = await this.getCollections();
+  async getCollectionById(id: string): Promise<{ collection: Collection }> {
+    const { collections } = await this.getCollections();
     const found = collections.find((c) => c._id === id);
     if (!found) {
       throw new Error('Collection not found.');
     }
-    return { collection: found, isMock };
+    return { collection: found };
   },
 
   async generateAiCollectionDraft(prompt: string): Promise<{
     draft: Partial<CreateCollectionInput> & { engine?: string };
   }> {
-    if (isBackendConfigured()) {
-      return apiRequest<{
-        draft: Partial<CreateCollectionInput> & { engine?: string };
-      }>(
-        '/api/collections/ai-draft',
-        {
-          method: 'POST',
-          body: JSON.stringify({ prompt }),
-        },
-        true
-      );
-    }
-
-    await delay(350);
-    return {
-      draft: {
-        type: 'POOL',
-        title: prompt.slice(0, 60),
-        description: `Group collection for ${prompt}.`,
-        pricingRule: 'FIXED',
-        amount: 5000,
-        targetAmount: 25000,
-        passFeeToPayer: true,
-        customFields: [],
-        engine: 'Local Sandbox AI',
+    return apiRequest<{
+      draft: Partial<CreateCollectionInput> & { engine?: string };
+    }>(
+      '/api/collections/ai-draft',
+      {
+        method: 'POST',
+        body: JSON.stringify({ prompt }),
       },
-    };
+      true
+    );
   },
 
   async createCollection(
     input: CreateCollectionInput
-  ): Promise<{ collection: Collection; isMock: boolean }> {
-    if (isBackendConfigured()) {
-      // Send both Joshua's field names and your Express schema aliases
-      const mode = input.type === 'POOL' ? 'SPLIT' : 'FLEXIBLE';
-      const totalTarget =
-        input.type === 'POOL'
-          ? input.targetAmount
-          : input.type === 'INVENTORY'
-          ? input.amount * (input.stockLimit || 1)
-          : input.amount;
+  ): Promise<{ collection: Collection }> {
+    // Send both Joshua's field names and the Express schema aliases.
+    const mode = input.type === 'POOL' ? 'SPLIT' : 'FLEXIBLE';
+    const totalTarget =
+      input.type === 'POOL'
+        ? input.targetAmount
+        : input.type === 'INVENTORY'
+        ? input.amount * (input.stockLimit || 1)
+        : input.amount;
 
-      const res = await apiRequest<{ collection: unknown }>(
-        '/api/collections',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            ...input,
-            mode,
-            totalTarget,
-            perPersonAmount: input.amount,
-            expectedPayers: [],
-          }),
-        },
-        true
-      );
-      return { collection: normalizeCollection(res.collection), isMock: false };
-    }
-
-    await delay(500);
-    const store = loadSandboxStore();
-    const baseSlug = slugify(input.title) || 'collection';
-    const randomSuffix = Math.floor(100 + Math.random() * 900);
-    const slug = `${baseSlug}-${randomSuffix}`;
-
-    const newCollection: Collection = {
-      _id: `col_${Date.now()}`,
-      organizerId: store.organizer._id,
-      organizerName: store.organizer.fullName,
-      organizerHandle: store.organizer.handle,
-      organizerVerified: store.organizer.verified,
-      slug,
-      type: input.type,
-      title: input.title.trim(),
-      description: input.description.trim(),
-      currency: 'NGN',
-      pricingRule: input.pricingRule,
-      amount: input.amount,
-      targetAmount: input.type === 'POOL' ? input.targetAmount : undefined,
-      amountRaised: 0,
-      stockLimit: input.type === 'INVENTORY' ? input.stockLimit : undefined,
-      stockSold: input.type === 'INVENTORY' ? 0 : undefined,
-      maxQuantityPerOrder: input.type === 'INVENTORY' ? input.maxQuantityPerOrder || 5 : undefined,
-      passFeeToPayer: input.passFeeToPayer,
-      customFields: input.customFields,
-      status: 'ACTIVE',
-      expiresAt: input.expiresAt || undefined,
-      createdAt: new Date().toISOString(),
-      contributorCount: 0,
-    };
-
-    store.collections = [newCollection, ...store.collections];
-    saveSandboxStore(store);
-    return { collection: newCollection, isMock: true };
+    const res = await apiRequest<{ collection: unknown }>(
+      '/api/collections',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          ...input,
+          mode,
+          totalTarget,
+          perPersonAmount: input.amount,
+          expectedPayers: [],
+        }),
+      },
+      true
+    );
+    return { collection: normalizeCollection(res.collection) };
   },
 
   async updateCollectionStatus(
     id: string,
     status: CollectionStatus
-  ): Promise<{ collection: Collection; isMock: boolean }> {
-    if (isBackendConfigured()) {
-      const res = await apiRequest<{ collection: unknown }>(
-        `/api/collections/${id}/status`,
-        {
-          method: 'PATCH',
-          body: JSON.stringify({ status }),
-        },
-        true
-      );
-      return { collection: normalizeCollection(res.collection), isMock: false };
-    }
-
-    await delay(300);
-    const store = loadSandboxStore();
-    const idx = store.collections.findIndex((c) => c._id === id);
-    if (idx === -1) throw new Error('Collection not found.');
-    store.collections[idx] = { ...store.collections[idx], status };
-    saveSandboxStore(store);
-    return { collection: store.collections[idx], isMock: true };
+  ): Promise<{ collection: Collection }> {
+    const res = await apiRequest<{ collection: unknown }>(
+      `/api/collections/${id}/status`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      },
+      true
+    );
+    return { collection: normalizeCollection(res.collection) };
   },
 
   async getCollectionLedger(
     id: string
-  ): Promise<{ collection: Collection; transactions: Transaction[]; isMock: boolean }> {
-    if (isBackendConfigured()) {
-      const res = await apiRequest<{ collection: unknown; transactions: Transaction[] }>(
-        `/api/collections/${id}/ledger`,
-        {},
-        true
-      );
-      return {
-        collection: normalizeCollection(res.collection),
-        transactions: Array.isArray(res.transactions)
-          ? res.transactions.map(normalizeTransaction)
-          : [],
-        isMock: false,
-      };
-    }
-
-    await delay(320);
-    const store = loadSandboxStore();
-    const collection = store.collections.find((c) => c._id === id);
-    if (!collection) throw new Error('Collection not found.');
-
-    const transactions = store.transactions
-      .filter((t) => t.collectionId === id)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    return { collection, transactions, isMock: true };
+  ): Promise<{ collection: Collection; transactions: Transaction[] }> {
+    const res = await apiRequest<{ collection: unknown; transactions: Transaction[] }>(
+      `/api/collections/${id}/ledger`,
+      {},
+      true
+    );
+    return {
+      collection: normalizeCollection(res.collection),
+      transactions: Array.isArray(res.transactions)
+        ? res.transactions.map(normalizeTransaction)
+        : [],
+    };
   },
 
-  async getAllTransactions(): Promise<{ transactions: Transaction[]; isMock: boolean }> {
-    if (isBackendConfigured()) {
-      const { collections } = await this.getCollections();
-      const ledgers = await Promise.all(collections.map((c) => this.getCollectionLedger(c._id)));
-      const all = ledgers
-        .flatMap((l) => l.transactions)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      return { transactions: all, isMock: false };
-    }
-
-    await delay(280);
-    const store = loadSandboxStore();
-    const sorted = [...store.transactions].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-    return { transactions: sorted, isMock: true };
+  async getAllTransactions(): Promise<{ transactions: Transaction[] }> {
+    const { collections } = await this.getCollections();
+    const ledgers = await Promise.all(collections.map((c) => this.getCollectionLedger(c._id)));
+    const all = ledgers
+      .flatMap((ledger) => ledger.transactions)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return { transactions: all };
   },
 
   // ---------------------------------------------------------------------------
   // PUBLIC COLLECTIONS (CONTRIBUTOR EXPERIENCE)
   // ---------------------------------------------------------------------------
-  async getPublicCollection(slug: string): Promise<{ collection: Collection; isMock: boolean }> {
-    if (isBackendConfigured()) {
-      const res = await apiRequest<{ collection: unknown }>(`/api/public/c/${slug}`);
-      return { collection: normalizeCollection(res.collection), isMock: false };
-    }
-
-    await delay(300);
-    const store = loadSandboxStore();
-    const collection = store.collections.find((c) => c.slug === slug);
-    if (!collection) {
-      throw new Error('This collection link is invalid or does not exist.');
-    }
-    return { collection, isMock: true };
+  async getPublicCollection(slug: string): Promise<{ collection: Collection }> {
+    const res = await apiRequest<{ collection: unknown }>(`/api/public/c/${slug}`);
+    return { collection: normalizeCollection(res.collection) };
   },
 
   async getOrganizerPublicHub(
     handle: string
-  ): Promise<{ organizer: Organizer; collections: Collection[]; isMock: boolean }> {
-    if (isBackendConfigured()) {
-      const res = await apiRequest<{ organizer: unknown; collections: unknown[] }>(
-        `/api/public/u/${handle}`
-      );
-      return {
-        organizer: normalizeOrganizer(res.organizer),
-        collections: Array.isArray(res.collections)
-          ? res.collections.map(normalizeCollection)
-          : [],
-        isMock: false,
-      };
-    }
-
-    await delay(300);
-    const store = loadSandboxStore();
-    if (store.organizer.handle.toLowerCase() !== handle.toLowerCase()) {
-      throw new Error('Organizer handle not found.');
-    }
-    const activeCollections = store.collections.filter((c) => c.status !== 'CLOSED');
-    const hydratedOrganizer = await profilePictureService.resolveOrganizerAvatar(store.organizer);
-    return { organizer: hydratedOrganizer, collections: activeCollections, isMock: true };
+  ): Promise<{ organizer: Organizer; collections: Collection[] }> {
+    const res = await apiRequest<{ organizer: unknown; collections: unknown[] }>(
+      `/api/public/u/${handle}`
+    );
+    return {
+      organizer: normalizeOrganizer(res.organizer),
+      collections: Array.isArray(res.collections)
+        ? res.collections.map(normalizeCollection)
+        : [],
+    };
   },
 
   // ---------------------------------------------------------------------------
@@ -881,108 +402,18 @@ export const wepayService = {
   // ---------------------------------------------------------------------------
   async initializePayment(
     payload: PaymentInitializeRequest
-  ): Promise<{ checkoutParams: InterswitchCheckoutParams; transaction: Transaction; isMock: boolean }> {
-    if (isBackendConfigured()) {
-      const res = await apiRequest<{
-        checkoutParams: InterswitchCheckoutParams;
-        transaction: Transaction;
-      }>('/api/payments/initialize', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-      return {
-        ...res,
-        transaction: normalizeTransaction(res.transaction),
-        isMock: false,
-      };
-    }
-
-    await delay(500);
-    const store = loadSandboxStore();
-    const colIndex = store.collections.findIndex((c) => c.slug === payload.slug);
-    if (colIndex === -1) {
-      throw new Error('Collection not found.');
-    }
-    const col = store.collections[colIndex];
-
-    if (col.status !== 'ACTIVE') {
-      throw new Error(`This collection is currently ${col.status.toLowerCase()} and cannot accept payments.`);
-    }
-
-    const qty = col.type === 'INVENTORY' ? Math.max(1, payload.quantity || 1) : 1;
-    if (col.type === 'INVENTORY') {
-      const remaining = (col.stockLimit ?? 0) - (col.stockSold ?? 0);
-      if (remaining < qty) {
-        throw new Error(`Only ${remaining} unit(s) remaining in stock.`);
-      }
-    }
-
-    const baseAmount =
-      col.type === 'INVENTORY'
-        ? col.amount * qty
-        : col.pricingRule === 'FIXED'
-        ? col.amount
-        : Math.max(payload.amount || col.amount, 100);
-
-    if (col.type === 'POOL' && col.targetAmount) {
-      const remainingTarget = Math.max(0, col.targetAmount - col.amountRaised);
-      if (remainingTarget <= 0) {
-        throw new Error('This pool target has already been reached.');
-      }
-      if (baseAmount > remainingTarget) {
-        throw new Error(
-          `Contribution exceeds remaining pool balance of Ã¢â€šÂ¦${remainingTarget.toLocaleString('en-NG')}.`
-        );
-      }
-    }
-
-    const sandboxFee = col.passFeeToPayer ? Math.min(Math.round(baseAmount * 0.015) + 50, 2000) : 0;
-    const totalPaid = baseAmount + sandboxFee;
-
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const txnRef = `WP-SBX-${Date.now().toString().slice(-6)}-${randomNum}`;
-    const receiptCode = `RCP-SBX-${randomNum}`;
-
-    const pendingTx: Transaction = {
-      _id: `tx_${Date.now()}`,
-      collectionId: col._id,
-      collectionTitle: col.title,
-      collectionSlug: col.slug,
-      collectionType: col.type,
-      txnRef,
-      contributorName: payload.contributorName.trim(),
-      contributorEmail: payload.contributorEmail.trim(),
-      contributorPhone: payload.contributorPhone.trim(),
-      quantity: col.type === 'INVENTORY' ? qty : 1,
-      baseAmount,
-      feeAmount: sandboxFee,
-      totalPaid,
-      customResponses: payload.customResponses,
-      customFieldAnswers: payload.customFieldAnswers,
-      receiptCode,
-      status: 'PENDING',
-      createdAt: new Date().toISOString(),
-      isSimulated: true,
+  ): Promise<{ checkoutParams: InterswitchCheckoutParams; transaction: Transaction }> {
+    const res = await apiRequest<{
+      checkoutParams: InterswitchCheckoutParams;
+      transaction: Transaction;
+    }>('/api/payments/initialize', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return {
+      ...res,
+      transaction: normalizeTransaction(res.transaction),
     };
-
-    store.transactions = [pendingTx, ...store.transactions];
-    saveSandboxStore(store);
-
-    const checkoutParams: InterswitchCheckoutParams = {
-      txnRef,
-      amount: totalPaid * 100,
-      amountNaira: totalPaid,
-      baseAmountNaira: baseAmount,
-      feeAmountNaira: sandboxFee,
-      merchantCode: 'SANDBOX_MERCHANT',
-      payItemId: 'SANDBOX_PAY_ITEM',
-      mode: 'TEST',
-      currency: '566',
-      receiptCode,
-      isSandboxSimulation: true,
-    };
-
-    return { checkoutParams, transaction: pendingTx, isMock: true };
   },
 
   async verifyPaymentByReference(txnRef: string): Promise<{
@@ -993,10 +424,6 @@ export const wepayService = {
     } | null;
     verificationError?: string;
   }> {
-    if (!isBackendConfigured()) {
-      throw new Error('Hosted checkout verification requires the WePay backend.');
-    }
-
     const res = await apiRequest<{
       transaction: Transaction;
       interswitchResponse?: {
@@ -1014,138 +441,16 @@ export const wepayService = {
     };
   },
 
-  async simulateSandboxVerification(
-    receiptCode: string,
-    outcome: 'SUCCESS' | 'FAILED' | 'PENDING'
-  ): Promise<ReceiptData> {
-    if (isBackendConfigured()) {
-      const existing = await this.getReceipt(receiptCode);
-      if (outcome !== 'PENDING') {
-        await apiRequest('/api/payments/verify', {
-          method: 'POST',
-          body: JSON.stringify({
-            txnRef: existing.transaction.txnRef,
-          }),
-        });
-      }
-      return this.getReceipt(receiptCode);
-    }
-
-    await delay(850);
-    const store = loadSandboxStore();
-    const txIdx = store.transactions.findIndex((t) => t.receiptCode === receiptCode);
-    if (txIdx === -1) {
-      throw new Error('Transaction record not found.');
-    }
-
-    const tx = store.transactions[txIdx];
-    const wasAlreadySuccess = tx.status === 'SUCCESS';
-
-    const updatedTx: Transaction = {
-      ...tx,
-      status: outcome,
-      interswitchRef:
-        outcome === 'SUCCESS'
-          ? `ISW-SBX-${Math.floor(10000000 + Math.random() * 89999999)}`
-          : undefined,
-      receiptHash:
-        outcome === 'SUCCESS'
-          ? `sandbox_hash_${Math.random().toString(36).slice(2, 14)}`
-          : undefined,
-      paidAt: outcome === 'SUCCESS' ? new Date().toISOString() : undefined,
-      isSimulated: true,
-    };
-
-    store.transactions[txIdx] = updatedTx;
-
-    const colIdx = store.collections.findIndex((c) => c._id === tx.collectionId);
-    if (colIdx !== -1 && outcome === 'SUCCESS' && !wasAlreadySuccess) {
-      const col = store.collections[colIdx];
-      const nextRaised = col.amountRaised + tx.baseAmount;
-      const nextSold =
-        col.type === 'INVENTORY' ? (col.stockSold ?? 0) + (tx.quantity ?? 1) : col.stockSold;
-
-      let nextStatus = col.status;
-      if (col.type === 'POOL' && col.targetAmount && nextRaised >= col.targetAmount) {
-        nextStatus = 'COMPLETED';
-      }
-      if (col.type === 'INVENTORY' && col.stockLimit && (nextSold ?? 0) >= col.stockLimit) {
-        nextStatus = 'SOLD_OUT';
-      }
-
-      store.collections[colIdx] = {
-        ...col,
-        amountRaised: nextRaised,
-        stockSold: nextSold,
-        status: nextStatus,
-        contributorCount: (col.contributorCount ?? 0) + 1,
-      };
-    }
-
-    saveSandboxStore(store);
-
-    const col = store.collections[colIdx];
-    return {
-      transaction: updatedTx,
-      collection: {
-        _id: col._id,
-        slug: col.slug,
-        title: col.title,
-        type: col.type,
-        organizerName: col.organizerName,
-        organizerHandle: col.organizerHandle,
-        passFeeToPayer: col.passFeeToPayer,
-      },
-      isSimulated: true,
-    };
-  },
-
   async verifyPaymentAndGetReceipt(txnRef: string, receiptCode: string): Promise<ReceiptData> {
     await this.verifyPaymentByReference(txnRef);
     return this.getReceipt(receiptCode);
   },
 
   async getReceipt(receiptCode: string): Promise<ReceiptData> {
-    if (isBackendConfigured()) {
-      const res = await apiRequest<ReceiptData>(`/api/payments/receipt/${receiptCode}`);
-      return {
-        ...res,
-        transaction: normalizeTransaction(res.transaction),
-        isSimulated: false,
-      };
-    }
-
-    await delay(300);
-    const store = loadSandboxStore();
-    const tx = store.transactions.find(
-      (t) => t.receiptCode.toLowerCase() === receiptCode.toLowerCase()
-    );
-    if (!tx) {
-      throw new Error('Receipt code not found or invalid.');
-    }
-    const col = store.collections.find((c) => c._id === tx.collectionId);
+    const res = await apiRequest<ReceiptData>(`/api/payments/receipt/${receiptCode}`);
     return {
-      transaction: tx,
-      collection: col
-        ? {
-            _id: col._id,
-            slug: col.slug,
-            title: col.title,
-            type: col.type,
-            organizerName: col.organizerName,
-            organizerHandle: col.organizerHandle,
-            passFeeToPayer: col.passFeeToPayer,
-          }
-        : {
-            _id: tx.collectionId,
-            slug: tx.collectionSlug || '',
-            title: tx.collectionTitle || 'WePay Collection',
-            type: tx.collectionType || 'OPEN',
-            organizerName: store.organizer.fullName,
-            organizerHandle: store.organizer.handle,
-            passFeeToPayer: true,
-          },
-      isSimulated: true,
+      ...res,
+      transaction: normalizeTransaction(res.transaction),
     };
   },
 };

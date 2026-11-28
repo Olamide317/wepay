@@ -51,10 +51,10 @@ export const MyCollectionsPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-indigo-600">Library</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Library</p>
           <h1 className="font-display text-2xl sm:text-[28px] font-bold tracking-tight text-slate-950">My Collections</h1>
           <p className="text-sm text-slate-600 mt-1">
-            All bill splits, open dues, and merchant pre-order links. Click any card to open its payment page.
+            SPLIT, FLEXIBLE and INVENTORY collection links. Open any card to manage or preview it.
           </p>
         </div>
         <Link to="/dashboard/create">
@@ -71,9 +71,9 @@ export const MyCollectionsPage: React.FC = () => {
           {(
             [
               { id: 'ALL', label: 'All Modes' },
-              { id: 'POOL', label: 'Group Pool' },
-              { id: 'OPEN', label: 'Open / Dues' },
-              { id: 'INVENTORY', label: 'Pre-Order' },
+              { id: 'POOL', label: 'SPLIT' },
+              { id: 'OPEN', label: 'FLEXIBLE' },
+              { id: 'INVENTORY', label: 'INVENTORY' },
             ] as const
           ).map((tab) => (
             <button
@@ -99,7 +99,7 @@ export const MyCollectionsPage: React.FC = () => {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search collections..."
             aria-label="Search collections"
-            className="w-full h-10 pl-9 pr-3.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600"
+            className="w-full h-10 pl-9 pr-3.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600"
           />
         </div>
       </div>
@@ -146,7 +146,7 @@ export const MyCollectionsPage: React.FC = () => {
                     navigate(`/c/${col.slug}`);
                   }
                 }}
-                className="group text-left rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.28)] flex flex-col justify-between space-y-5 cursor-pointer transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-[0_18px_38px_-26px_rgba(79,70,229,0.32)] focus:outline-none focus:ring-4 focus:ring-indigo-600/10"
+                className="group text-left rounded-2xl border border-slate-200/90 bg-white p-5 shadow-lg shadow-slate-900/15 flex flex-col justify-between space-y-5 cursor-pointer transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-xl hover:shadow-teal-600/15 focus:outline-none focus:ring-4 focus:ring-teal-600/10"
               >
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-2">
@@ -157,7 +157,7 @@ export const MyCollectionsPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-base font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                    <h3 className="text-base font-semibold text-slate-900 group-hover:text-teal-700 transition-colors">
                       {col.title}
                     </h3>
                     <p className="text-xs text-slate-500 mt-1 line-clamp-2">{col.description}</p>

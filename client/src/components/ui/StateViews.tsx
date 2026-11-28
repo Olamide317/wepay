@@ -17,7 +17,7 @@ export const EmptyState: React.FC<{
   actionLabel?: string;
   onAction?: () => void;
 }> = ({ icon, title, description, actionLabel, onAction }) => (
-  <div className="py-12 px-6 text-center flex flex-col items-center justify-center bg-white border border-slate-200 rounded-xl">
+  <div className="py-12 px-6 text-center flex flex-col items-center justify-center bg-white border border-slate-200 rounded-xl shadow-lg shadow-slate-900/15">
     <div className="h-12 w-12 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center mb-4">
       {icon}
     </div>
@@ -40,7 +40,7 @@ export const AlertBanner: React.FC<{
   const styles = {
     info: 'bg-slate-50 border-slate-200 text-slate-800',
     success: 'bg-emerald-50 border-emerald-200 text-emerald-900',
-    warning: 'bg-amber-50 border-amber-200 text-amber-900',
+    warning: 'bg-[#f59e08]/10 border-[#f59e08]/30 text-[#92400e]',
     error: 'bg-red-50 border-red-200 text-red-900',
   };
 

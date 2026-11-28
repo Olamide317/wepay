@@ -86,7 +86,7 @@ export const DynamicCustomFieldInput: React.FC<DynamicCustomFieldInputProps> = (
                 htmlFor={optionId}
                 className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg border text-sm transition-colors cursor-pointer ${
                   checked
-                    ? 'border-indigo-600 bg-indigo-50/70 text-slate-900'
+                    ? 'border-teal-600 bg-teal-50/70 text-slate-900'
                     : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                 } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
@@ -98,7 +98,7 @@ export const DynamicCustomFieldInput: React.FC<DynamicCustomFieldInputProps> = (
                   checked={checked}
                   disabled={disabled}
                   onChange={() => onChange(opt)}
-                  className="h-4 w-4 border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer"
+                  className="h-4 w-4 border-slate-300 text-teal-600 focus:ring-teal-600 cursor-pointer"
                 />
                 <span>{opt}</span>
               </label>
@@ -138,7 +138,7 @@ export const DynamicCustomFieldInput: React.FC<DynamicCustomFieldInputProps> = (
                 htmlFor={optionId}
                 className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg border text-sm transition-colors cursor-pointer ${
                   checked
-                    ? 'border-indigo-600 bg-indigo-50/70 text-slate-900'
+                    ? 'border-teal-600 bg-teal-50/70 text-slate-900'
                     : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                 } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
@@ -149,7 +149,7 @@ export const DynamicCustomFieldInput: React.FC<DynamicCustomFieldInputProps> = (
                   checked={checked}
                   disabled={disabled}
                   onChange={() => toggleOption(opt)}
-                  className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer"
+                  className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-600 cursor-pointer"
                 />
                 <span>{opt}</span>
               </label>

@@ -10,6 +10,11 @@ export function formatNaira(amount: number, showDecimals = true): string {
   }).format(safeAmount);
 }
 
+export function calculateProcessingFee(amount: number): number {
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  return Math.min(Math.round(amount * 0.015) + 50, 2000);
+}
+
 export function formatDate(dateString?: string, includeTime = false): string {
   if (!dateString) return '—';
   const date = new Date(dateString);
@@ -44,22 +49,22 @@ export function formatFullHeaderDate(date = new Date()): string {
 export function getCollectionModeLabel(type: 'POOL' | 'OPEN' | 'INVENTORY'): string {
   switch (type) {
     case 'POOL':
-      return 'Bill Split / Group Pool';
+      return 'SPLIT';
     case 'OPEN':
-      return 'Open Collection / Dues';
+      return 'FLEXIBLE';
     case 'INVENTORY':
-      return 'Merchant Pre-Order';
+      return 'INVENTORY';
   }
 }
 
 export function getShortModeLabel(type: 'POOL' | 'OPEN' | 'INVENTORY'): string {
   switch (type) {
     case 'POOL':
-      return 'Group Pool';
+      return 'SPLIT';
     case 'OPEN':
-      return 'Open / Dues';
+      return 'FLEXIBLE';
     case 'INVENTORY':
-      return 'Pre-Order';
+      return 'INVENTORY';
   }
 }
 
@@ -118,20 +123,28 @@ export function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
 }
 
-export function suggestEmailCorrection(email: string): string | undefined {
-  const [localPart, domain, ...extra] = email.trim().split('@');
-  if (!localPart || !domain || extra.length > 0) return undefined;
+export function getEmailTypoSuggestion(email: string): string | undefined {
+  const trimmedEmail = email.trim();
+  if (!isValidEmail(trimmedEmail)) return undefined;
+  const atIndex = trimmedEmail.lastIndexOf('@');
+  if (atIndex <= 0) return undefined;
 
-  const corrections: Record<string, string> = {
+  const domain = trimmedEmail.slice(atIndex + 1).toLowerCase();
+  const domainSuggestions: Record<string, string> = {
     'gmial.com': 'gmail.com',
     'gmal.com': 'gmail.com',
     'gmail.co': 'gmail.com',
     'yaho.com': 'yahoo.com',
     'hotmal.com': 'hotmail.com',
   };
-  const correctedDomain = corrections[domain.toLowerCase()];
-  return correctedDomain ? `${localPart}@${correctedDomain}` : undefined;
+  const suggestedDomain = domainSuggestions[domain];
+
+  return suggestedDomain
+    ? `${trimmedEmail.slice(0, atIndex)}@${suggestedDomain}`
+    : undefined;
 }
+
+export const suggestEmailCorrection = getEmailTypoSuggestion;
 
 export function isValidNigerianPhone(phone: string): boolean {
   const cleaned = phone.replace(/[\s()-]/g, '');

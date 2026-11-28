@@ -51,7 +51,7 @@ export const OrganizerAvatar: React.FC<OrganizerAvatarProps> = ({
   return (
     <div
       aria-label={name}
-      className={`${sizeClass} rounded-full bg-indigo-600 text-white font-display font-bold flex items-center justify-center shrink-0 select-none ${className}`}
+      className={`${sizeClass} rounded-full bg-teal-700 text-white font-display font-bold flex items-center justify-center shrink-0 select-none ${className}`}
     >
       {getInitials(name)}
     </div>
