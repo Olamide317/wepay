@@ -1,17 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { Building2, ExternalLink } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { OrganizerAvatar } from '../../components/OrganizerAvatar';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input, Select } from '../../components/ui/FormControls';
 import { AlertBanner } from '../../components/ui/StateViews';
+import { useToast } from '../../components/ui/Toast';
 import { NIGERIAN_BANKS } from '../../constants/banks';
 import { useAuth } from '../../context/AuthContext';
 import { wepayService } from '../../services/wepayService';
 
 export const ProfilePage: React.FC = () => {
   const { organizer, setOrganizerState } = useAuth();
+  const { showToast } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const historyReturnTo =
+    location.state && typeof location.state === 'object'
+      ? (location.state as Record<string, unknown>).returnTo
+      : undefined;
+  const returnToCreate =
+    new URLSearchParams(location.search).get('returnTo') === '/dashboard/create' ||
+    historyReturnTo === '/dashboard/create';
 
   const [bankCode, setBankCode] = useState(organizer?.settlementBank?.bankCode || '');
   const [accountNumber, setAccountNumber] = useState(
@@ -27,7 +38,6 @@ export const ProfilePage: React.FC = () => {
     setAccountNumber(organizer?.settlementBank?.accountNumber || '');
     setAccountName(organizer?.settlementBank?.accountName || '');
     setSaveError(null);
-    setSaveSuccess(false);
   }, [
     organizer?._id,
     organizer?.settlementBank?.bankCode,
@@ -69,6 +79,9 @@ export const ProfilePage: React.FC = () => {
       });
       setOrganizerState(res.organizer);
       setSaveSuccess(true);
+      if (returnToCreate) {
+        showToast('Bank details saved. Your collection draft is ready to continue.', 'success');
+      }
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Unable to save bank details.');
     } finally {
@@ -146,6 +159,13 @@ export const ProfilePage: React.FC = () => {
             <AlertBanner
               variant="success"
               message="Settlement bank account updated successfully."
+              action={
+                returnToCreate ? (
+                  <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/create')}>
+                    Back to Create Collection
+                  </Button>
+                ) : undefined
+              }
             />
           )}
 

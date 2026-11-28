@@ -19,6 +19,7 @@ import { MyCollectionsPage } from './pages/dashboard/MyCollectionsPage';
 import { ProductOverviewPage } from './pages/dashboard/ProductOverviewPage';
 import { ProfilePage } from './pages/dashboard/ProfilePage';
 import { WePayAiNavigator } from './components/WePayAiNavigator';
+import { ToastProvider } from './components/ui/Toast';
 
 const FounderAdminGuard: React.FC = () => {
   const { organizer, isLoading } = useAuth();
@@ -38,45 +39,47 @@ const FounderAdminGuard: React.FC = () => {
 export function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <WePayAiNavigator />
-        <Routes>
-          {/* Default Root Route: WePay Overview */}
-          <Route path="/" element={<OrganizerLayout requireAuth={false} />}>
-            <Route index element={<ProductOverviewPage />} />
-          </Route>
-
-          {/* Public Routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
-          <Route path="/c/:slug" element={<PublicCollectionPage />} />
-          <Route path="/u/:handle" element={<OrganizerHubPage />} />
-          <Route path="/receipt/:code" element={<ReceiptPage />} />
-
-          <Route element={<FounderAdminGuard />}>
-            <Route path="/admin" element={<OrganizerLayout />}>
-              <Route index element={<FounderAdminPage />} />
+      <ToastProvider>
+        <BrowserRouter>
+          <WePayAiNavigator />
+          <Routes>
+            {/* Default Root Route: WePay Overview */}
+            <Route path="/" element={<OrganizerLayout requireAuth={false} />}>
+              <Route index element={<ProductOverviewPage />} />
             </Route>
-          </Route>
 
-          {/* Organizer Protected Routes */}
-          <Route path="/dashboard" element={<OrganizerLayout />}>
-            <Route index element={<DashboardOverviewPage />} />
-            <Route path="overview" element={<Navigate to="/" replace />} />
-            <Route path="collections" element={<MyCollectionsPage />} />
-            <Route path="create" element={<CreateCollectionPage />} />
-            <Route path="collections/:id" element={<CollectionDetailsPage />} />
-            <Route path="collections/:id/ledger" element={<CollectionLedgerPage />} />
-            <Route path="transactions" element={<AllTransactionsPage />} />
-            <Route path="profile" element={<ProfilePage />} />
-          </Route>
+            {/* Public Routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+            <Route path="/c/:slug" element={<PublicCollectionPage />} />
+            <Route path="/u/:handle" element={<OrganizerHubPage />} />
+            <Route path="/receipt/:code" element={<ReceiptPage />} />
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+            <Route element={<FounderAdminGuard />}>
+              <Route path="/admin" element={<OrganizerLayout />}>
+                <Route index element={<FounderAdminPage />} />
+              </Route>
+            </Route>
+
+            {/* Organizer Protected Routes */}
+            <Route path="/dashboard" element={<OrganizerLayout />}>
+              <Route index element={<DashboardOverviewPage />} />
+              <Route path="overview" element={<Navigate to="/" replace />} />
+              <Route path="collections" element={<MyCollectionsPage />} />
+              <Route path="create" element={<CreateCollectionPage />} />
+              <Route path="collections/:id" element={<CollectionDetailsPage />} />
+              <Route path="collections/:id/ledger" element={<CollectionLedgerPage />} />
+              <Route path="transactions" element={<AllTransactionsPage />} />
+              <Route path="profile" element={<ProfilePage />} />
+            </Route>
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </ToastProvider>
     </AuthProvider>
   );
 }

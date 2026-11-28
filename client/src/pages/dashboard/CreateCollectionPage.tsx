@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Check,
   CheckCircle2,
@@ -18,6 +18,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input, Select, Textarea } from '../../components/ui/FormControls';
 import { AlertBanner } from '../../components/ui/StateViews';
+import { useToast } from '../../components/ui/Toast';
 import { useAuth } from '../../context/AuthContext';
 import { wepayService } from '../../services/wepayService';
 import { Collection, CollectionType, CustomField, PricingRule } from '../../types/wepay';
@@ -31,6 +32,39 @@ interface FormErrors {
   stockLimit?: string;
 }
 
+interface CollectionFormDraft {
+  mode: CollectionType;
+  title: string;
+  description: string;
+  pricingRule: PricingRule;
+  amount: string;
+  targetAmount: string;
+  stockLimit: string;
+  maxQuantityPerOrder: string;
+  feeHandling: 'ABSORB' | 'PASS_TO_PAYER';
+  deadline: string;
+  customFields: CustomField[];
+  aiPrompt: string;
+  aiAuditTips: string[];
+}
+
+const CREATE_COLLECTION_DRAFT_KEY = 'wepay_create_collection_draft';
+
+function isStoredCustomField(value: unknown): value is CustomField {
+  if (!value || typeof value !== 'object') return false;
+  const field = value as Record<string, unknown>;
+  const fieldTypes = ['short_text', 'long_text', 'email', 'phone', 'number', 'select', 'radio', 'checkbox', 'text'];
+  return (
+    typeof field.id === 'string' &&
+    typeof field.label === 'string' &&
+    field.label.trim().length > 0 &&
+    typeof field.type === 'string' &&
+    fieldTypes.includes(field.type) &&
+    typeof field.required === 'boolean' &&
+    (field.options === undefined || (Array.isArray(field.options) && field.options.every((option) => typeof option === 'string')))
+  );
+}
+
 const AI_PRESET_PROMPTS = [
   '₦10 live pitch demo pass (2 slots, organizer absorbs fee)',
   'Split ₦75,000 hostel Starlink bill among 5 roommates',
@@ -38,6 +72,9 @@ const AI_PRESET_PROMPTS = [
 
 export const CreateCollectionPage: React.FC = () => {
   const { organizer } = useAuth();
+  const { showToast } = useToast();
+  const [draftRestored, setDraftRestored] = useState(false);
+  const storageErrorShown = useRef(false);
   const settlementBank = organizer?.settlementBank;
   const hasSettlementBank = Boolean(
     settlementBank?.bankCode &&
@@ -70,6 +107,82 @@ export const CreateCollectionPage: React.FC = () => {
   const [createdCollection, setCreatedCollection] = useState<Collection | null>(null);
   const [copied, setCopied] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+
+  const persistDraft = (notifyStorageError = true): boolean => {
+    try {
+      window.sessionStorage.setItem(CREATE_COLLECTION_DRAFT_KEY, JSON.stringify({
+        mode: type,
+        title,
+        description,
+        pricingRule,
+        amount,
+        targetAmount,
+        stockLimit,
+        maxQuantityPerOrder,
+        feeHandling: passFeeToPayer ? 'PASS_TO_PAYER' : 'ABSORB',
+        deadline: expiresAt,
+        customFields,
+        aiPrompt,
+        aiAuditTips,
+      } satisfies CollectionFormDraft));
+      return true;
+    } catch {
+      if (notifyStorageError && !storageErrorShown.current) {
+        storageErrorShown.current = true;
+        showToast('WePay could not save this draft in this tab. Keep this page open while you finish creating your collection.', 'error');
+      }
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    try {
+      const saved = window.sessionStorage.getItem(CREATE_COLLECTION_DRAFT_KEY);
+      if (saved) {
+        const draft: Partial<CollectionFormDraft> = JSON.parse(saved);
+        if (draft.mode === 'POOL' || draft.mode === 'OPEN' || draft.mode === 'INVENTORY') setType(draft.mode);
+        if (typeof draft.title === 'string') setTitle(draft.title);
+        if (typeof draft.description === 'string') setDescription(draft.description);
+        if (draft.pricingRule === 'FIXED' || draft.pricingRule === 'MINIMUM' || draft.pricingRule === 'FLEXIBLE') {
+          setPricingRule(draft.pricingRule);
+        }
+        if (typeof draft.amount === 'string') setAmount(draft.amount);
+        if (typeof draft.targetAmount === 'string') setTargetAmount(draft.targetAmount);
+        if (typeof draft.stockLimit === 'string') setStockLimit(draft.stockLimit);
+        if (typeof draft.maxQuantityPerOrder === 'string') setMaxQuantityPerOrder(draft.maxQuantityPerOrder);
+        if (draft.feeHandling === 'ABSORB' || draft.feeHandling === 'PASS_TO_PAYER') {
+          setPassFeeToPayer(draft.feeHandling === 'PASS_TO_PAYER');
+        }
+        if (typeof draft.deadline === 'string') setExpiresAt(draft.deadline);
+        if (Array.isArray(draft.customFields)) setCustomFields(draft.customFields.filter(isStoredCustomField));
+        if (typeof draft.aiPrompt === 'string') setAiPrompt(draft.aiPrompt);
+        if (Array.isArray(draft.aiAuditTips)) setAiAuditTips(draft.aiAuditTips.filter((tip): tip is string => typeof tip === 'string'));
+      }
+    } catch {
+      showToast('WePay could not restore your saved collection draft. You can continue entering your details here.', 'error');
+    } finally {
+      setDraftRestored(true);
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    if (draftRestored) persistDraft();
+  }, [
+    draftRestored,
+    type,
+    title,
+    description,
+    pricingRule,
+    amount,
+    targetAmount,
+    stockLimit,
+    maxQuantityPerOrder,
+    passFeeToPayer,
+    expiresAt,
+    customFields,
+    aiPrompt,
+    aiAuditTips,
+  ]);
 
   const handleGenerateWithAi = async (promptOverride?: string) => {
     const query = (promptOverride ?? aiPrompt).trim();
@@ -119,7 +232,7 @@ export const CreateCollectionPage: React.FC = () => {
     }
   };
 
-  const validate = (): boolean => {
+  const validate = (): FormErrors => {
     const next: FormErrors = {};
     if (!title.trim() || title.trim().length < 3) {
       next.title = 'Collection title must be at least 3 characters.';
@@ -129,8 +242,8 @@ export const CreateCollectionPage: React.FC = () => {
     }
 
     const numAmount = Number(amount);
-    if (pricingRule !== 'FLEXIBLE') {
-      if (!amount || Number.isNaN(numAmount) || numAmount < 10) {
+    if (pricingRule !== 'FLEXIBLE' || type === 'INVENTORY') {
+      if (!amount || !Number.isFinite(numAmount) || numAmount < 10) {
         next.amount = 'Enter a valid Naira amount (minimum ₦10).';
       }
     }
@@ -152,20 +265,35 @@ export const CreateCollectionPage: React.FC = () => {
     }
 
     setErrors(next);
-    return Object.keys(next).length === 0;
+    return next;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+    const validationErrors = validate();
+    const issueMessages: string[] = [];
     if (!hasSettlementBank) {
-      setSubmitError(
-        'Bank details are required before you can create a collection. Add your settlement bank account first.'
+      issueMessages.push('add your settlement bank account in Profile');
+    }
+    if (validationErrors.title) issueMessages.push(`Collection Title: ${validationErrors.title}`);
+    if (validationErrors.description) issueMessages.push(`Description: ${validationErrors.description}`);
+    if (validationErrors.amount) issueMessages.push(`Amount: ${validationErrors.amount}`);
+    if (validationErrors.targetAmount) issueMessages.push(`Target Amount: ${validationErrors.targetAmount}`);
+    if (validationErrors.stockLimit) issueMessages.push(`Stock Limit: ${validationErrors.stockLimit}`);
+
+    if (issueMessages.length > 0) {
+      const draftSaved = persistDraft(false);
+      showToast(
+        `Cannot publish yet: ${issueMessages.join('; ')}. ${
+          draftSaved ? 'Your form draft is saved.' : 'Browser storage is unavailable; keep this page open to retain your input.'
+        }`,
+        'error'
       );
       return;
     }
-    if (!validate()) return;
 
+    persistDraft();
     setSubmitting(true);
     try {
       const orderedFields = customFields.map((f, idx) => ({ ...f, order: idx }));
@@ -183,6 +311,11 @@ export const CreateCollectionPage: React.FC = () => {
         customFields: orderedFields,
         expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
       });
+      try {
+        window.sessionStorage.removeItem(CREATE_COLLECTION_DRAFT_KEY);
+      } catch {
+        showToast('Your collection was created, but the saved draft could not be cleared from this tab.', 'info');
+      }
       setCreatedCollection(collection);
     } catch (err) {
       setSubmitError(
@@ -278,7 +411,7 @@ export const CreateCollectionPage: React.FC = () => {
       <div>
         <h1 className="font-display text-2xl font-bold text-slate-900">Create Collection</h1>
         <p className="text-sm text-slate-600 mt-0.5">
-          Describe your collection in plain English with AI or configure every rule manually.
+          Tell us what you’re collecting, set the details, and share a link. Start with AI or fill in the form yourself.
         </p>
       </div>
 
@@ -286,9 +419,12 @@ export const CreateCollectionPage: React.FC = () => {
         <AlertBanner
           variant="warning"
           title="Settlement bank details required"
-          message="Add a valid settlement bank account before you can publish a collection or pool."
+          message="Add your bank account before you publish. Your collection draft will be here when you return."
           action={
-            <Link to="/dashboard/profile">
+            <Link
+              to="/dashboard/profile?returnTo=%2Fdashboard%2Fcreate"
+              state={{ returnTo: '/dashboard/create' }}
+            >
               <Button variant="outline" size="sm">
                 Add Bank Details
               </Button>
@@ -310,7 +446,7 @@ export const CreateCollectionPage: React.FC = () => {
                   Describe with WePay AI
                 </h2>
                 <p className="text-xs text-slate-600">
-                  Describe what you are collecting and let WePay AI auto-configure mode, pricing, stock caps, and custom fields.
+                  Tell us what you need to collect. We’ll suggest a title, price, target or stock, and buyer questions.
                 </p>
               </div>
             </div>
@@ -327,7 +463,7 @@ export const CreateCollectionPage: React.FC = () => {
                   handleGenerateWithAi();
                 }
               }}
-              placeholder="e.g. Split ₦75,000 Starlink bill among 5 roommates..."
+              placeholder="e.g. Split the ₦75,000 Starlink bill among 5 roommates..."
               className="flex-1 h-10 px-3.5 rounded-lg border border-indigo-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600"
             />
             <Button
@@ -388,7 +524,7 @@ export const CreateCollectionPage: React.FC = () => {
                   1. Select Collection Type
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Choose the collection rule that matches how funds should be tracked.
+                  Pick the option that fits what you’re collecting.
                 </p>
               </div>
 
@@ -397,20 +533,20 @@ export const CreateCollectionPage: React.FC = () => {
                   [
                     {
                       id: 'POOL',
-                      title: 'Bill Split / Group Pool',
-                      desc: 'Collect towards a target amount that closes automatically once reached.',
+                      title: 'Bill Split & Group Pool',
+                      desc: 'Split a shared bill or pool funds toward a fixed target — like a ₦75,000 Starlink subscription or group gift.',
                       Icon: Users,
                     },
                     {
                       id: 'OPEN',
-                      title: 'Open Collection / Dues',
-                      desc: 'Accept ongoing contributions or student dues with no hard target cap.',
+                      title: 'Open Collection & Dues',
+                      desc: 'Collect departmental dues, levies, or open group contributions with instant receipt tracking.',
                       Icon: Layers,
                     },
                     {
                       id: 'INVENTORY',
-                      title: 'Merchant Pre-Order',
-                      desc: 'Sell finite stock units with quantity limits and fulfillment questions.',
+                      title: 'Pre-Order & Event Tickets',
+                      desc: 'Sell limited-stock items, snack boxes, or event tickets with automatic stock locking and buyer fields.',
                       Icon: Package,
                     },
                   ] as const
@@ -456,9 +592,7 @@ export const CreateCollectionPage: React.FC = () => {
                   2. Collection Information
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {type === 'INVENTORY'
-                    ? 'Shown prominently to customers on the public payment page.'
-                    : 'Shown prominently to contributors on the public payment page.'}
+                  This is what people will see when they open your collection link.
                 </p>
               </div>
 
@@ -467,10 +601,10 @@ export const CreateCollectionPage: React.FC = () => {
                 required
                 placeholder={
                   type === 'POOL'
-                    ? 'e.g. November Starlink Subscription'
+                    ? 'e.g. Starlink bill for the flat'
                     : type === 'INVENTORY'
-                    ? 'e.g. Campus Snack Box'
-                    : 'e.g. NACOS 400L Departmental Dues'
+                    ? 'e.g. Campus snack box pre-order'
+                    : 'e.g. NACOS departmental dues'
                 }
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -483,8 +617,8 @@ export const CreateCollectionPage: React.FC = () => {
                 rows={3}
                 placeholder={
                   type === 'INVENTORY'
-                    ? 'Explain what customers are paying for, pickup instructions, or fulfillment timeline...'
-                    : 'Explain what contributors are paying for, pickup instructions, or settlement timeline...'
+                    ? 'What’s included, and where or when can buyers collect it?'
+                    : 'What is the money for? Add any useful details for contributors.'
                 }
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -501,7 +635,7 @@ export const CreateCollectionPage: React.FC = () => {
                   3. Pricing &amp; {type === 'INVENTORY' ? 'Inventory' : 'Target'} Configuration
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  All figures operate in Nigerian Naira (NGN).
+                  Enter your price and, for a group pool, the total you’re aiming to raise.
                 </p>
               </div>
 
@@ -587,7 +721,7 @@ export const CreateCollectionPage: React.FC = () => {
               <div>
                 <h2 className="text-base font-semibold text-slate-900">5. Additional Settings</h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Configure processing fee handling and optional collection deadline.
+                  Choose who covers the payment fee and, if needed, when the collection ends.
                 </p>
               </div>
 
@@ -636,7 +770,7 @@ export const CreateCollectionPage: React.FC = () => {
                 type="date"
                 value={expiresAt}
                 onChange={(e) => setExpiresAt(e.target.value)}
-                hint="Leave blank if this collection has no fixed closing date."
+                hint="Leave blank if contributors can pay at any time."
               />
             </div>
           </Card>
@@ -722,7 +856,6 @@ export const CreateCollectionPage: React.FC = () => {
                   fullWidth
                   size="lg"
                   loading={submitting}
-                  disabled={!hasSettlementBank}
                 >
                   {submitting ? 'Creating Collection...' : 'Create Collection'}
                 </Button>
