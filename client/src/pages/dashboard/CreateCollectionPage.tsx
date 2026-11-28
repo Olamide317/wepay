@@ -32,8 +32,8 @@ interface FormErrors {
 }
 
 const AI_PRESET_PROMPTS = [
-  '100 NACOS dinner tickets at ₦5,000 with Matric Number',
-  '₦10 live pitch demo pass (2 slots)',
+  '₦10 live pitch demo pass (2 slots, organizer absorbs fee)',
+  'Split ₦75,000 hostel Starlink bill among 5 roommates',
 ];
 
 export const CreateCollectionPage: React.FC = () => {
@@ -81,16 +81,23 @@ export const CreateCollectionPage: React.FC = () => {
     setSubmitError(null);
     try {
       const { draft, source } = await wepayService.draftCollectionWithAi(query);
-      if (draft.type) setType(draft.type);
-      if (draft.title) setTitle(draft.title);
-      if (draft.description) setDescription(draft.description);
-      if (draft.pricingRule) setPricingRule(draft.pricingRule);
-      if (draft.amount !== undefined) setAmount(draft.amount > 0 ? String(draft.amount) : '');
-      setTargetAmount(draft.targetAmount ? String(draft.targetAmount) : '');
-      setStockLimit(draft.stockLimit ? String(draft.stockLimit) : '');
-      if (draft.passFeeToPayer !== undefined) setPassFeeToPayer(Boolean(draft.passFeeToPayer));
-      setCustomFields(Array.isArray(draft.customFields) ? draft.customFields : []);
-      setAiAuditTips(Array.isArray(draft.auditTips) ? draft.auditTips : []);
+      setType(draft.mode);
+      setTitle(draft.title);
+      setDescription(draft.description);
+      setPricingRule(draft.pricingRule === 'OPEN' ? 'FLEXIBLE' : 'FIXED');
+      setAmount(String(draft.amount));
+      setTargetAmount(draft.targetAmount === null ? '' : String(draft.targetAmount));
+      setStockLimit(draft.stockLimit === null ? '' : String(draft.stockLimit));
+      setPassFeeToPayer(draft.feeHandling === 'PASS_TO_PAYER');
+      setCustomFields(draft.customFields.map((field, idx) => ({
+        id: `cf_${Date.now()}_${idx}`,
+        label: field.label,
+        type: field.type === 'number' ? 'number' : field.type === 'select' ? 'select' : 'text',
+        required: field.required,
+        options: field.type === 'select' ? field.options?.length ? field.options : ['Option 1', 'Option 2'] : undefined,
+        order: idx,
+      })));
+      setAiAuditTips(draft.auditTips);
       setErrors({});
       setAiNotice(
         `Configured via ${source === 'gemini' ? 'Gemini AI' : 'WePay smart fallback'} — review the auto-filled fields below or publish immediately.`
@@ -330,7 +337,7 @@ export const CreateCollectionPage: React.FC = () => {
               disabled={!aiPrompt.trim()}
             >
               {!aiGenerating && <Wand2 className="h-4 w-4" />}
-              <span>{aiGenerating ? 'Generating...' : 'Generate Form'}</span>
+              <span>{aiGenerating ? 'Generating...' : 'Generate with AI'}</span>
             </Button>
           </div>
 

@@ -224,18 +224,21 @@ export interface AiNavigatorResponse {
 }
 
 export interface AiCollectionDraft {
-  title?: string;
-  description?: string;
-  type?: CollectionType;
-  mode?: 'SPLIT' | 'FLEXIBLE';
-  pricingRule?: PricingRule;
-  amount?: number;
-  targetAmount?: number;
-  stockLimit?: number;
-  passFeeToPayer?: boolean;
-  customFields?: CustomField[];
-  auditTips?: string[];
-  engine?: string;
+  title: string;
+  description: string;
+  mode: CollectionType;
+  pricingRule: 'UNIT' | 'FIXED' | 'OPEN';
+  amount: number;
+  targetAmount: number | null;
+  stockLimit: number | null;
+  feeHandling: 'ABSORB' | 'PASS_TO_PAYER';
+  customFields: Array<{
+    label: string;
+    type: 'text' | 'number' | 'select';
+    required: boolean;
+    options?: string[];
+  }>;
+  auditTips: string[];
 }
 
 export interface AiLedgerAnswer {

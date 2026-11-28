@@ -40,13 +40,7 @@ export const CollectionDetailsPage: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [confirmNextStatus, setConfirmNextStatus] = useState<CollectionStatus | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [insightsLoading, setInsightsLoading] = useState(false);
-  const [insights, setInsights] = useState<{
-    headline: string;
-    insights: string[];
-    whatsappBroadcast: string;
-    urgencyLevel: 'LOW' | 'MEDIUM' | 'HIGH';
-  } | null>(null);
+  const [reminderGenerating, setReminderGenerating] = useState(false);
   const [broadcastCopied, setBroadcastCopied] = useState(false);
 
   const load = async () => {
@@ -136,27 +130,21 @@ export const CollectionDetailsPage: React.FC = () => {
     }
   };
 
-  const handleGenerateInsights = async () => {
-    setInsightsLoading(true);
+  const handleGenerateAndCopyReminder = async () => {
+    setReminderGenerating(true);
     setError(null);
     try {
       const result = await wepayService.getCollectionAiInsights(collection._id);
-      setInsights(result.analysis);
-    } catch (insightError) {
-      setError(insightError instanceof Error ? insightError.message : 'Unable to generate collection insights.');
-    } finally {
-      setInsightsLoading(false);
-    }
-  };
-
-  const handleCopyBroadcast = async () => {
-    if (!insights?.whatsappBroadcast) return;
-    try {
-      await navigator.clipboard.writeText(insights.whatsappBroadcast);
+      const reminder = result.analysis.whatsappBroadcast?.trim();
+      if (!reminder) throw new Error('WePay AI did not return a WhatsApp reminder.');
+      await navigator.clipboard.writeText(reminder);
       setBroadcastCopied(true);
       window.setTimeout(() => setBroadcastCopied(false), 2000);
-    } catch {
+    } catch (insightError) {
       setBroadcastCopied(false);
+      setError(insightError instanceof Error ? insightError.message : 'Unable to generate and copy a WhatsApp reminder.');
+    } finally {
+      setReminderGenerating(false);
     }
   };
 
@@ -183,6 +171,15 @@ export const CollectionDetailsPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleGenerateAndCopyReminder()}
+            loading={reminderGenerating}
+          >
+            {!reminderGenerating && (broadcastCopied ? <Check className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />)}
+            <span>{broadcastCopied ? 'Reminder Copied' : 'AI WhatsApp Reminder'}</span>
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
             <Share2 className="h-4 w-4" />
             <span>Share</span>
@@ -328,51 +325,6 @@ export const CollectionDetailsPage: React.FC = () => {
           </div>
         </Card>
       </div>
-
-      <Card padding="lg" className="border-indigo-100 bg-gradient-to-br from-indigo-50/60 to-white">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-indigo-600" />
-              <h2 className="text-sm font-bold text-slate-900">WePay AI Insights & WhatsApp Broadcast</h2>
-            </div>
-            {insights ? (
-              <p className="text-sm font-semibold text-slate-800">{insights.headline}</p>
-            ) : (
-              <p className="text-xs text-slate-500">Generate a live progress summary and organizer reminder.</p>
-            )}
-          </div>
-          <Button variant="primary" size="sm" onClick={() => void handleGenerateInsights()} loading={insightsLoading}>
-            {!insightsLoading && <Sparkles className="h-3.5 w-3.5" />}
-            <span>Generate AI Insights</span>
-          </Button>
-        </div>
-        {insights && (
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <ul className="space-y-2">
-              {insights.insights.slice(0, 3).map((insight) => (
-                <li key={insight} className="flex gap-2 text-xs leading-relaxed text-slate-700">
-                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-600" />
-                  <span>{insight}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="rounded-xl border border-slate-200 bg-white p-3">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">WhatsApp reminder</p>
-              <p className="text-xs leading-relaxed text-slate-700">{insights.whatsappBroadcast}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3"
-                onClick={() => void handleCopyBroadcast()}
-              >
-                {broadcastCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                <span>{broadcastCopied ? 'Copied' : 'Copy WhatsApp Reminder'}</span>
-              </Button>
-            </div>
-          </div>
-        )}
-      </Card>
 
       {/* Configured Contributor Information Fields */}
       {collection.customFields.length > 0 && (

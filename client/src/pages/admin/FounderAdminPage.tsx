@@ -7,7 +7,6 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
-  Sparkles,
   Users,
   Wallet,
 } from 'lucide-react';
@@ -47,13 +46,6 @@ export const FounderAdminPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | TransactionStatus>('ALL');
-  const [radarLoading, setRadarLoading] = useState(false);
-  const [radar, setRadar] = useState<{
-    riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
-    headline: string;
-    findings: Array<{ title: string; detail: string; severity: 'INFO' | 'WARN' | 'ALERT' }>;
-    recommendations: string[];
-  } | null>(null);
 
   const loadOverview = async (refresh = false) => {
     if (refresh) setRefreshing(true);
@@ -97,19 +89,6 @@ export const FounderAdminPage: React.FC = () => {
       setError(exportError instanceof Error ? exportError.message : 'Unable to export transactions.');
     } finally {
       setExporting(false);
-    }
-  };
-
-  const handleRiskScan = async () => {
-    setRadarLoading(true);
-    setError(null);
-    try {
-      const result = await wepayService.getAdminFraudRadar();
-      setRadar(result.radar);
-    } catch (scanError) {
-      setError(scanError instanceof Error ? scanError.message : 'Unable to run the fraud radar.');
-    } finally {
-      setRadarLoading(false);
     }
   };
 
@@ -173,60 +152,6 @@ export const FounderAdminPage: React.FC = () => {
           </Button>
         </div>
       </header>
-
-      <Card padding="lg" className="border-indigo-100 bg-gradient-to-br from-indigo-50/50 to-white">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-indigo-600" />
-              <h2 className="text-sm font-bold text-slate-900">AI Anomaly & Fraud Radar</h2>
-            </div>
-            {radar ? (
-              <div className="mt-2 flex items-center gap-2">
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
-                  radar.riskLevel === 'HIGH'
-                    ? 'bg-red-100 text-red-800'
-                    : radar.riskLevel === 'MEDIUM'
-                    ? 'bg-amber-100 text-amber-800'
-                    : 'bg-emerald-100 text-emerald-800'
-                }`}>
-                  {radar.riskLevel}
-                </span>
-                <p className="text-sm font-semibold text-slate-800">{radar.headline}</p>
-              </div>
-            ) : (
-              <p className="mt-1 text-xs text-slate-500">Scan failed attempts, email patterns, and platform transaction spikes.</p>
-            )}
-          </div>
-          <Button variant="outline" size="sm" onClick={() => void handleRiskScan()} loading={radarLoading}>
-            {!radarLoading && <Sparkles className="h-3.5 w-3.5" />}
-            <span>Run AI Risk Scan</span>
-          </Button>
-        </div>
-        {radar && (
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            <div className="space-y-2">
-              {radar.findings.map((finding) => (
-                <div key={`${finding.title}-${finding.detail}`} className="rounded-lg border border-slate-200 bg-white p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-bold text-slate-900">{finding.title}</p>
-                    <span className="text-[10px] font-semibold text-slate-500">{finding.severity}</span>
-                  </div>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-600">{finding.detail}</p>
-                </div>
-              ))}
-            </div>
-            <div className="rounded-lg border border-slate-200 bg-white p-3">
-              <p className="text-xs font-bold text-slate-900">Recommendations</p>
-              <ul className="mt-2 space-y-1.5">
-                {radar.recommendations.map((recommendation) => (
-                  <li key={recommendation} className="text-xs text-slate-600">• {recommendation}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
-      </Card>
 
       {error && <AlertBanner variant="error" message={error} />}
 

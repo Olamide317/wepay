@@ -490,22 +490,57 @@ export const wepayService = {
     }
     await delay(180);
     const lower = message.toLowerCase();
-    if (/bank|account|payout/.test(lower)) {
+    if (/fee|charge|percent|1\.5/.test(lower)) {
       return {
-        reply: 'Sign in, then open Profile to add or update your settlement bank account.',
-        actions: [{ label: 'Go to Profile', route: '/dashboard/profile', description: 'Add payout bank details' }],
+        reply: 'WePay charges a 1.5% payment fee; the payer can cover it or the organizer can absorb it when creating a collection. Review the fee setting before publishing.',
+        actions: [{ label: 'Create Collection', route: '/dashboard/create', description: 'Choose who covers the payment fee' }],
         source: 'smart-fallback',
       };
     }
-    if (/ticket|create|collection|link/.test(lower)) {
+    if (/withdraw|bank|account|settlement|payout/.test(lower)) {
       return {
-        reply: 'Open Create Collection to build a pool, open collection, or ticket link.',
+        reply: 'Settlements are processed T+1 through Interswitch to the bank account saved in your Profile. Add or update that account before collecting payments.',
+        actions: [{ label: 'Go to Profile', route: '/dashboard/profile', description: 'Manage settlement bank details' }],
+        source: 'smart-fallback',
+      };
+    }
+    if (/receipt|proof of payment/.test(lower)) {
+      return {
+        reply: 'After Interswitch confirms a successful payment, WePay automatically emails the payer a receipt through Brevo. Organizers can verify the transaction in the ledger.',
+        actions: [{ label: 'View Transactions', route: '/dashboard/transactions', description: 'Check confirmed payments' }],
+        source: 'smart-fallback',
+      };
+    }
+    if (/share|sharing|qr|barcode|collection link/.test(lower)) {
+      return {
+        reply: 'Open a collection and use Share to copy its public payment link or show its QR code. Payers can complete checkout through Interswitch.',
+        actions: [{ label: 'My Collections', route: '/dashboard/collections', description: 'Open a collection to share its link or QR' }],
+        source: 'smart-fallback',
+      };
+    }
+    if (/ticket|create|collection|link|pre.?order|pool|dues|collect/.test(lower)) {
+      return {
+        reply: 'Create a Bill Pool for shared costs, an Inventory Pre-Order for limited items, or Open Dues for flexible contributions. Set the pricing, target or stock, then share your link.',
         actions: [{ label: 'Create Collection', route: '/dashboard/create', description: 'Build a new collection' }],
         source: 'smart-fallback',
       };
     }
+    if (/who.*pay|who don pay|payer|transaction|ledger|pending|failed|paid|csv|export/.test(lower)) {
+      return {
+        reply: 'Open Transactions to search payers and check successful, pending, or failed payments; you can also export the records as CSV. Use the verified status in the ledger to confirm payment.',
+        actions: [{ label: 'Open Transactions', route: '/dashboard/transactions', description: 'Search payers and export transaction records' }],
+        source: 'smart-fallback',
+      };
+    }
+    if (/card|transfer|ussd|interswitch|secure|safe/.test(lower)) {
+      return {
+        reply: 'Live checkout runs through Interswitch and supports Card, Transfer, and USSD. WePay verifies payments before marking them successful or issuing receipts; never share your OTP.',
+        actions: [{ label: 'View Transactions', route: '/dashboard/transactions', description: 'Review verified payments' }],
+        source: 'smart-fallback',
+      };
+    }
     return {
-      reply: 'You can check payment records from the Transactions page or manage collections from Dashboard.',
+      reply: 'WePay supports Bill Pooling, Inventory Pre-Orders, and Open Dues, with live Interswitch checkout and automatic email receipts. Ask me about fees, settlements, sharing links, receipts, or checking who paid.',
       actions: [
         { label: 'Open Dashboard', route: '/dashboard', description: 'Organizer dashboard' },
         { label: 'View Transactions', route: '/dashboard/transactions', description: 'Search payment records' },
@@ -523,17 +558,45 @@ export const wepayService = {
       );
     }
     await delay(350);
+    const lower = prompt.toLowerCase();
+    const mode = /(ticket|slot|merch|shirt|pass|seat|pre.?order)/i.test(lower)
+      ? 'INVENTORY'
+      : /(donat|support|gift|open contribution)/i.test(lower)
+      ? 'OPEN'
+      : 'POOL';
+    const explicitAmount = prompt.match(/(?:₦|NGN)\s*([\d][\d,]*(?:\.\d+)?)/i);
+    const parsedAmount = explicitAmount
+      ? Math.max(10, Math.round(Number(explicitAmount[1].replace(/,/g, ''))))
+      : 10;
+    const splitCount = lower.match(/(?:among|between)\s+(\d{1,4})/i);
+    const count = splitCount ? Number(splitCount[1]) : null;
+    const targetAmount = mode === 'POOL' ? parsedAmount : null;
+    const stockMatch = lower.match(/(\d{1,6})\s*(?:tickets?|slots?|units?|seats?|shirts?|passes?)/i);
+    const customFields: AiCollectionDraft['customFields'] = [];
+    if (/matric|nacos|departmental|campus|student|dues/i.test(lower)) {
+      customFields.push({ label: 'Matric Number', type: 'text', required: true });
+    }
+    if (/department/i.test(lower)) customFields.push({ label: 'Department', type: 'text', required: true });
+    if (/phone|whatsapp/i.test(lower)) customFields.push({ label: 'Phone Number', type: 'text', required: true });
+    if (/shirt|size|merch/i.test(lower)) {
+      customFields.push({ label: 'T-Shirt Size', type: 'select', required: true, options: ['S', 'M', 'L', 'XL', 'XXL'] });
+    }
+    if (/level/i.test(lower)) customFields.push({ label: 'Level', type: 'text', required: true });
+    if (/hostel|room/i.test(lower)) customFields.push({ label: 'Hostel / Room', type: 'text', required: true });
     return {
       draft: {
-        type: 'POOL',
-        title: prompt.slice(0, 60),
+        title: prompt.slice(0, 60) || 'WePay Collection',
         description: `Collection for ${prompt}`,
-        pricingRule: 'FIXED',
-        amount: 5000,
-        targetAmount: 25000,
-        passFeeToPayer: true,
-        customFields: [],
-        auditTips: ['Review the target and fee pass-through before publishing.'],
+        mode,
+        pricingRule: mode === 'INVENTORY' ? 'UNIT' : mode === 'OPEN' ? 'OPEN' : 'FIXED',
+        amount: mode === 'POOL' && count ? Math.max(10, Math.ceil(parsedAmount / count)) : parsedAmount,
+        targetAmount,
+        stockLimit: mode === 'INVENTORY' ? stockMatch ? Number(stockMatch[1]) : 50 : null,
+        feeHandling: /\b(absorb|organizer absorbs|no fee)\b/i.test(lower) ? 'ABSORB' : 'PASS_TO_PAYER',
+        customFields,
+        auditTips: mode === 'INVENTORY'
+          ? ['Confirm the stock limit before sharing the pre-order link.']
+          : ['Review the collection amount and fee handling before sharing the link.'],
       },
       source: 'smart-fallback',
     };
