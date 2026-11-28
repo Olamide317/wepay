@@ -2,7 +2,12 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Collection = require('../models/Collection');
 const Transaction = require('../models/Transaction');
-const { sendPaymentReceiptEmail } = require('../services/emailService');
+const {
+  sendPaymentReceiptEmail,
+  sendSoldOutEmail,
+  sendTargetReachedEmail,
+} = require('../services/emailService');
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const getIswConfig = () => {
   const isLive = (process.env.ISW_MODE || 'LIVE').toUpperCase() === 'LIVE';
@@ -42,6 +47,89 @@ const notifyReceiptEmail = (transaction, collection) => {
     .catch((error) => console.error('[Brevo Receipt Error]:', error.message));
 };
 
+const notifyCollectionMilestones = async (collectionId) => {
+  const collection = await Collection.findById(collectionId).populate(
+    'organizer',
+    'fullName name email'
+  );
+  if (!collection?.organizer?.email) return;
+
+  const organizerName =
+    collection.organizer.fullName || collection.organizer.name || 'Organizer';
+
+  if (
+    collection.targetAmount > 0 &&
+    collection.totalCollected >= collection.targetAmount
+  ) {
+    const result = await Collection.updateOne(
+      {
+        _id: collection._id,
+        $or: [
+          { targetReachedNotified: false },
+          { targetReachedNotified: { $exists: false } },
+        ],
+      },
+      { $set: { targetReachedNotified: true } }
+    );
+    if (result.modifiedCount === 1) {
+      void Promise.resolve()
+        .then(() =>
+          sendTargetReachedEmail({
+            organizerName,
+            organizerEmail: collection.organizer.email,
+            collectionTitle: collection.title,
+            collectionSlug: collection.slug,
+            totalCollected: collection.totalCollected,
+            targetAmount: collection.targetAmount,
+          })
+        )
+        .catch((error) =>
+          console.error('[Brevo Target Reached Error]:', error.message)
+        );
+    }
+  }
+
+  if (
+    collection.type === 'INVENTORY' &&
+    collection.status === 'SOLD_OUT'
+  ) {
+    const result = await Collection.updateOne(
+      {
+        _id: collection._id,
+        $or: [
+          { soldOutNotified: false },
+          { soldOutNotified: { $exists: false } },
+        ],
+      },
+      { $set: { soldOutNotified: true } }
+    );
+    if (result.modifiedCount === 1) {
+      void Promise.resolve()
+        .then(() =>
+          sendSoldOutEmail({
+            organizerName,
+            organizerEmail: collection.organizer.email,
+            collectionTitle: collection.title,
+            collectionSlug: collection.slug,
+            totalCollected: collection.totalCollected,
+            stockLimit: collection.stockLimit,
+          })
+        )
+        .catch((error) =>
+          console.error('[Brevo Sold Out Error]:', error.message)
+        );
+    }
+  }
+};
+
+const notifySuccessfulSettlement = (settlement) => {
+  if (!settlement.newlySettled) return;
+  notifyReceiptEmail(settlement.transaction, settlement.collection);
+  void notifyCollectionMilestones(settlement.collection?._id).catch((error) =>
+    console.error('[WePay Collection Alert Error]:', error.message)
+  );
+};
+
 const formatTransactionResponse = (tx, collection) => ({
   _id: tx._id,
   collectionId: collection?._id || tx.collectionId,
@@ -67,7 +155,7 @@ const formatTransactionResponse = (tx, collection) => ({
   isSimulated: false,
 });
 
-const settleTransactionSuccess = async (tx, interswitchRef) => {
+const settleTransactionSuccess = async (tx, interswitchRef, iswData) => {
   const session = await mongoose.startSession();
   let settledTransaction = tx;
   let settledCollection = null;
@@ -120,8 +208,11 @@ const settleTransactionSuccess = async (tx, interswitchRef) => {
           return;
         }
 
-        if ((updatedCol.stockSold || 0) >= updatedCol.stockLimit && updatedCol.status === 'ACTIVE') {
-          updatedCol.status = 'COMPLETED';
+        if (
+          (updatedCol.stockSold || 0) >= updatedCol.stockLimit &&
+          updatedCol.status !== 'SOLD_OUT'
+        ) {
+          updatedCol.status = 'SOLD_OUT';
           await updatedCol.save({ session });
         }
       } else {
@@ -153,6 +244,12 @@ const settleTransactionSuccess = async (tx, interswitchRef) => {
 
       const now = new Date();
       const secret = process.env.JWT_SECRET || 'wepay_receipt_secret';
+      currentTx.contributorEmail = String(
+        currentTx.contributorEmail ||
+          iswData?.CustomerEmail ||
+          iswData?.customerEmail ||
+          ''
+      ).trim();
       currentTx.status = 'SUCCESS';
       currentTx.interswitchRef = interswitchRef || `ISW-${Date.now()}`;
       currentTx.receiptHash = crypto
@@ -223,6 +320,11 @@ exports.initializePayment = async (req, res) => {
 
     if (!slug || !contributorName || !contributorName.trim()) {
       return res.status(400).json({ message: 'Collection slug and contributor name are required' });
+    }
+    if (!EMAIL_REGEX.test(String(contributorEmail || '').trim())) {
+      return res.status(400).json({
+        message: 'Please enter a valid email address for your digital receipt.',
+      });
     }
 
     const collection = await Collection.findOne({ slug: String(slug).trim() }).populate(
@@ -388,11 +490,9 @@ exports.verifyPayment = async (req, res) => {
     if (isApproved) {
       const ref =
         iswData?.PaymentReference || iswData?.RetrievalReferenceNumber || `ISW-QA-${Date.now()}`;
-      const settlement = await settleTransactionSuccess(tx, ref);
+      const settlement = await settleTransactionSuccess(tx, ref, iswData);
       tx = settlement.transaction;
-      if (settlement.newlySettled) {
-        notifyReceiptEmail(tx, settlement.collection);
-      }
+      notifySuccessfulSettlement(settlement);
     } else if (iswData && iswData.ResponseCode && iswData.ResponseCode !== '09') {
       await Transaction.updateOne(
         { _id: tx._id, status: 'PENDING' },
@@ -453,11 +553,9 @@ exports.handleWebhook = async (req, res) => {
       if (isVerifiedInterswitchPayment(iswData, amountKobo)) {
         const ref =
           iswData.PaymentReference || iswData.RetrievalReferenceNumber || `ISW-WH-${Date.now()}`;
-        const settlement = await settleTransactionSuccess(tx, ref);
+        const settlement = await settleTransactionSuccess(tx, ref, iswData);
         tx = settlement.transaction;
-        if (settlement.newlySettled) {
-          notifyReceiptEmail(tx, settlement.collection);
-        }
+        notifySuccessfulSettlement(settlement);
       }
     }
 

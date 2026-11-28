@@ -27,6 +27,11 @@ const STATUS_STYLE: Record<
     classes: 'bg-indigo-50 text-indigo-700 border-indigo-200',
     Icon: CheckCircle2,
   },
+  SOLD_OUT: {
+    label: 'Sold out',
+    classes: 'bg-amber-50 text-amber-700 border-amber-200',
+    Icon: CheckCircle2,
+  },
   PAUSED: {
     label: 'Paused',
     classes: 'bg-amber-50 text-amber-700 border-amber-200',

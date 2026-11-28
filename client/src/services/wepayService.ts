@@ -236,6 +236,33 @@ export const wepayService = {
   // ---------------------------------------------------------------------------
   // AUTHENTICATION
   // ---------------------------------------------------------------------------
+  async requestPasswordReset(email: string): Promise<{ message: string }> {
+    if (!isBackendConfigured()) {
+      throw new Error('Password recovery requires the WePay backend.');
+    }
+    return apiRequest<{ message: string }>('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    });
+  },
+
+  async resetPassword(
+    token: string,
+    password: string
+  ): Promise<{ token: string; user: Organizer }> {
+    if (!isBackendConfigured()) {
+      throw new Error('Password recovery requires the WePay backend.');
+    }
+    const res = await apiRequest<{ token: string; user: unknown }>(
+      `/api/auth/reset-password/${encodeURIComponent(token)}`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ password }),
+      }
+    );
+    return { token: res.token, user: normalizeOrganizer(res.user) };
+  },
+
   async login(payload: { email: string; password: string; remember?: boolean }): Promise<{
     organizer: Organizer;
     token: string;
@@ -910,7 +937,7 @@ export const wepayService = {
         nextStatus = 'COMPLETED';
       }
       if (col.type === 'INVENTORY' && col.stockLimit && (nextSold ?? 0) >= col.stockLimit) {
-        nextStatus = 'COMPLETED';
+        nextStatus = 'SOLD_OUT';
       }
 
       store.collections[colIdx] = {

@@ -180,17 +180,19 @@ export const CollectionDetailsPage: React.FC = () => {
               <span>Resume</span>
             </Button>
           )}
-          {collection.status !== 'CLOSED' && collection.status !== 'COMPLETED' && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-600 border-red-200 hover:bg-red-50"
-              onClick={() => setConfirmNextStatus('CLOSED')}
-            >
-              <XCircle className="h-4 w-4" />
-              <span>Close</span>
-            </Button>
-          )}
+          {collection.status !== 'CLOSED' &&
+            collection.status !== 'COMPLETED' &&
+            collection.status !== 'SOLD_OUT' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-red-600 border-red-200 hover:bg-red-50"
+                onClick={() => setConfirmNextStatus('CLOSED')}
+              >
+                <XCircle className="h-4 w-4" />
+                <span>Close</span>
+              </Button>
+            )}
         </div>
       </div>
 

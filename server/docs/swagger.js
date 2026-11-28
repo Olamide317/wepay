@@ -28,6 +28,7 @@ const swaggerSpec = {
     { name: "Collections", description: "POOL, OPEN & INVENTORY collection engine + AI Builder" },
     { name: "Payments", description: "Interswitch IPG checkout initiation, server requery & ledger" },
     { name: "Receipts", description: "SHA-256 QR-verified digital receipts" },
+    { name: "Admin", description: "Founder-only platform telemetry and transaction export" },
   ],
   components: {
     securitySchemes: {
@@ -66,7 +67,12 @@ const swaggerSpec = {
           type: { type: "string", enum: ["POOL", "OPEN", "INVENTORY"], example: "POOL" },
           mode: { type: "string", enum: ["SPLIT", "FLEXIBLE"], example: "SPLIT" },
           pricingRule: { type: "string", enum: ["FIXED", "MINIMUM", "FLEXIBLE"], example: "FIXED" },
-          amount: { type: "number", example: 15000, description: "Fixed or minimum amount in NGN" },
+          amount: {
+            type: "number",
+            minimum: 10,
+            example: 15000,
+            description: "Fixed or minimum amount in NGN; payment and collection price floors are ₦10.",
+          },
           perPersonAmount: { type: "number", example: 15000 },
           targetAmount: { type: "number", example: 75000, description: "Used for POOL target auto-completion" },
           totalTarget: { type: "number", example: 75000 },
@@ -103,7 +109,9 @@ const swaggerSpec = {
               totalCollected: { type: "number", example: 45000 },
               stockSold: { type: "integer", example: 3 },
               contributorCount: { type: "integer", example: 3 },
-              status: { type: "string", enum: ["ACTIVE", "COMPLETED", "PAUSED", "CLOSED"], example: "ACTIVE" },
+              status: { type: "string", enum: ["ACTIVE", "COMPLETED", "SOLD_OUT", "PAUSED", "CLOSED"], example: "ACTIVE" },
+              targetReachedNotified: { type: "boolean", default: false },
+              soldOutNotified: { type: "boolean", default: false },
               createdAt: { type: "string", format: "date-time" },
               updatedAt: { type: "string", format: "date-time" },
             },
@@ -122,18 +130,30 @@ const swaggerSpec = {
           avatarUrl: { type: "string", format: "uri" },
           settlementBank: { type: "object", nullable: true },
           verified: { type: "boolean" },
+          isFounder: { type: "boolean", example: false },
+          role: { type: "string", enum: ["ORGANIZER", "SUPER_ADMIN"], example: "ORGANIZER" },
           createdAt: { type: "string", format: "date-time" },
         },
       },
       PaymentInitializeRequest: {
         type: "object",
-        required: ["slug", "contributorName"],
+        required: ["slug", "contributorName", "contributorEmail"],
         properties: {
           slug: { type: "string", example: "hostel-starlink-split-x9k2" },
           contributorName: { type: "string", example: "Olamide Adeyemi" },
-          contributorEmail: { type: "string", format: "email", example: "olamide@student.lautech.edu.ng" },
+          contributorEmail: {
+            type: "string",
+            format: "email",
+            example: "olamide@student.lautech.edu.ng",
+            description: "Required payer email used for checkout prefill and the digital receipt.",
+          },
           contributorPhone: { type: "string", example: "08012345678" },
-          amount: { type: "number", example: 15000, description: "Base contribution amount in NGN" },
+          amount: {
+            type: "number",
+            minimum: 10,
+            example: 15000,
+            description: "Base contribution amount in NGN; minimum ₦10.",
+          },
           quantity: { type: "integer", default: 1, example: 1 },
           customResponses: {
             type: "object",
@@ -440,6 +460,92 @@ const swaggerSpec = {
           400: { description: "Email and password are required" },
           401: { description: "Invalid credentials" },
           500: { description: "Login failed" },
+        },
+      },
+    },
+    "/auth/forgot-password": {
+      post: {
+        tags: ["Auth"],
+        summary: "Request a password reset email",
+        description:
+          "Always returns the same success response for valid email addresses, whether or not an account exists, to prevent account enumeration.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email"],
+                properties: {
+                  email: { type: "string", format: "email", example: "organizer@example.com" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Password reset request accepted",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    message: {
+                      type: "string",
+                      example: "If an account exists for that email, a password reset link has been sent.",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          400: { description: "Email address is invalid" },
+        },
+      },
+    },
+    "/auth/reset-password/{token}": {
+      post: {
+        tags: ["Auth"],
+        summary: "Set a new password using a reset token",
+        parameters: [
+          {
+            name: "token",
+            in: "path",
+            required: true,
+            schema: { type: "string", example: "64-character-hex-reset-token" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["password"],
+                properties: {
+                  password: { type: "string", format: "password", minLength: 6 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Password updated; signed JWT and serialized user returned",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    token: { type: "string" },
+                    user: { $ref: "#/components/schemas/Organizer" },
+                  },
+                },
+              },
+            },
+          },
+          400: { description: "Password is too short or reset token is invalid/expired" },
         },
       },
     },
@@ -935,6 +1041,68 @@ const swaggerSpec = {
             },
           },
           404: { description: "Invalid or unknown receipt code" },
+        },
+      },
+    },
+    "/admin/overview": {
+      get: {
+        tags: ["Admin"],
+        summary: "Retrieve founder platform telemetry",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: {
+            description: "Aggregated platform KPIs, recent transactions, collections, and organizers",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    kpis: {
+                      type: "object",
+                      properties: {
+                        totalGrossVolume: { type: "number" },
+                        totalFeeRevenue: { type: "number" },
+                        totalOrganizers: { type: "integer" },
+                        activeCollections: { type: "integer" },
+                        totalTransactions: { type: "integer" },
+                        successfulTransactions: { type: "integer" },
+                        conversionRate: { type: "number", description: "Successful transactions as a percentage of all transactions." },
+                      },
+                    },
+                    recentTransactions: { type: "array", items: { $ref: "#/components/schemas/Transaction" } },
+                    collections: { type: "array", items: { $ref: "#/components/schemas/Collection" } },
+                    organizers: { type: "array", items: { $ref: "#/components/schemas/Organizer" } },
+                  },
+                },
+              },
+            },
+          },
+          401: { description: "Unauthorized" },
+          403: { description: "Founder access required" },
+        },
+      },
+    },
+    "/admin/transactions/export.csv": {
+      get: {
+        tags: ["Admin"],
+        summary: "Download the master platform transactions CSV",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: {
+            description: "CSV export of all platform transactions",
+            headers: {
+              "Content-Disposition": {
+                schema: { type: "string", example: 'attachment; filename="wepay-platform-transactions.csv"' },
+              },
+            },
+            content: {
+              "text/csv": {
+                schema: { type: "string", format: "binary" },
+              },
+            },
+          },
+          401: { description: "Unauthorized" },
+          403: { description: "Founder access required" },
         },
       },
     },

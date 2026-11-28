@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Lock } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { WePayLogo } from '../components/WePayLogo';
 import { BackButton } from '../components/BackButton';
 import { Button } from '../components/ui/Button';
@@ -13,7 +13,11 @@ import fundingImage from '../assets/images/funding.jpg';
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
+  const passwordReset = Boolean(
+    (location.state as { passwordReset?: boolean } | null)?.passwordReset
+  );
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,7 +25,6 @@ export const LoginPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [authError, setAuthError] = useState<string | null>(null);
-  const [forgotNotice, setForgotNotice] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const validate = () => {
@@ -81,13 +84,12 @@ export const LoginPage: React.FC = () => {
         <Card padding="lg">
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
             {authError && <AlertBanner variant="error" message={authError} />}
-            {forgotNotice && (
+            {passwordReset && (
               <AlertBanner
-                variant="info"
-                message="Password reset is managed by your organizer account administrator. Contact support if you need help recovering access."
+                variant="success"
+                message="Your password has been updated. Sign in with your new password."
               />
             )}
-
             <Input
               label="Email address"
               type="email"
@@ -101,6 +103,14 @@ export const LoginPage: React.FC = () => {
 
             <Input
               label="Password"
+              labelAction={
+                <Link
+                  to="/forgot-password"
+                  className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                >
+                  Forgot password?
+                </Link>
+              }
               type={showPassword ? 'text' : 'password'}
               required
               autoComplete="current-password"
@@ -120,19 +130,12 @@ export const LoginPage: React.FC = () => {
               }
             />
 
-            <div className="flex items-center justify-between gap-2 pt-0.5">
+            <div className="flex items-center gap-2 pt-0.5">
               <Checkbox
                 label="Remember me"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
               />
-              <button
-                type="button"
-                onClick={() => setForgotNotice((v) => !v)}
-                className="text-xs font-medium text-indigo-600 hover:text-indigo-700 cursor-pointer"
-              >
-                Forgot password?
-              </button>
             </div>
 
             <Button type="submit" fullWidth size="lg" loading={loading}>

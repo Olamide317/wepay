@@ -5,9 +5,11 @@ import { OrganizerLayout } from './layouts/OrganizerLayout';
 import { LoginPage } from './pages/LoginPage';
 import { OrganizerHubPage } from './pages/OrganizerHubPage';
 import { FounderAdminPage } from './pages/admin/FounderAdminPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { PublicCollectionPage } from './pages/PublicCollectionPage';
 import { ReceiptPage } from './pages/ReceiptPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { AllTransactionsPage } from './pages/dashboard/AllTransactionsPage';
 import { CollectionDetailsPage } from './pages/dashboard/CollectionDetailsPage';
 import { CollectionLedgerPage } from './pages/dashboard/CollectionLedgerPage';
@@ -45,6 +47,8 @@ export function App() {
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="/c/:slug" element={<PublicCollectionPage />} />
           <Route path="/u/:handle" element={<OrganizerHubPage />} />
           <Route path="/receipt/:code" element={<ReceiptPage />} />

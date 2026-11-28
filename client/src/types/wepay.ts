@@ -1,6 +1,6 @@
 export type CollectionType = 'POOL' | 'OPEN' | 'INVENTORY';
 
-export type CollectionStatus = 'ACTIVE' | 'COMPLETED' | 'PAUSED' | 'CLOSED';
+export type CollectionStatus = 'ACTIVE' | 'COMPLETED' | 'SOLD_OUT' | 'PAUSED' | 'CLOSED';
 
 export type PricingRule = 'FIXED' | 'MINIMUM' | 'FLEXIBLE';
 

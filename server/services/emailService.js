@@ -136,3 +136,101 @@ exports.sendPaymentReceiptEmail = ({
       </body></html>`,
   });
 };
+
+exports.sendPasswordResetEmail = ({ name, email, resetUrl }) => {
+  const safeName = escapeHtml(name || 'there');
+  const safeResetUrl = escapeHtml(resetUrl);
+
+  return sendEmail({
+    email,
+    subject: 'Reset your WePay password',
+    htmlContent: `
+      <!doctype html>
+      <html><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#0f172a">
+        <main style="max-width:600px;margin:32px auto;background:#fff;border-radius:16px;padding:36px">
+          <h1 style="margin:0 0 16px;color:#312e81">Password reset request</h1>
+          <p style="font-size:16px;line-height:1.6">Hello ${safeName}, use the button below to choose a new password. This link expires in 30 minutes.</p>
+          <a href="${safeResetUrl}" style="display:inline-block;margin-top:12px;padding:14px 22px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">Reset password</a>
+          <p style="margin-top:24px;color:#64748b;font-size:13px">If you did not request this change, you can ignore this email.</p>
+        </main>
+      </body></html>`,
+  });
+};
+
+const formatNaira = (amount) =>
+  new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(amount) || 0);
+
+exports.sendTargetReachedEmail = ({
+  organizerName,
+  organizerEmail,
+  collectionTitle,
+  collectionSlug,
+  totalCollected,
+  targetAmount,
+}) => {
+  const dashboardUrl = `${getAppBaseUrl()}/dashboard`;
+  const collectionUrl = `${getAppBaseUrl()}/c/${encodeURIComponent(String(collectionSlug || ''))}`;
+  const safeName = escapeHtml(organizerName || 'Organizer');
+  const safeTitle = escapeHtml(collectionTitle || 'your collection');
+  const safeDashboardUrl = escapeHtml(dashboardUrl);
+  const safeCollectionUrl = escapeHtml(collectionUrl);
+  const safeCollected = escapeHtml(formatNaira(totalCollected));
+  const safeTarget = escapeHtml(formatNaira(targetAmount));
+
+  return sendEmail({
+    email: organizerEmail,
+    subject: `Goal reached: ${collectionTitle || 'your WePay collection'}`,
+    htmlContent: `
+      <!doctype html>
+      <html><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#0f172a">
+        <main style="max-width:600px;margin:32px auto;background:#fff;border-radius:16px;padding:36px">
+          <p style="margin:0 0 8px;color:#047857;font-size:13px;font-weight:bold;text-transform:uppercase;letter-spacing:1px">Collection goal reached</p>
+          <h1 style="margin:0 0 16px;color:#312e81">Congratulations, ${safeName}!</h1>
+          <p style="font-size:16px;line-height:1.6"><strong>${safeTitle}</strong> has reached 100% of its target.</p>
+          <p style="font-size:16px;line-height:1.6">Collected: <strong>${safeCollected}</strong> of <strong>${safeTarget}</strong>.</p>
+          <a href="${safeDashboardUrl}" style="display:inline-block;margin-top:12px;padding:14px 22px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">Open your dashboard</a>
+          <a href="${safeCollectionUrl}" style="display:inline-block;margin:12px 0 0 8px;padding:14px 22px;background:#e2e8f0;color:#0f172a;text-decoration:none;border-radius:8px;font-weight:bold">View collection</a>
+        </main>
+      </body></html>`,
+  });
+};
+
+exports.sendSoldOutEmail = ({
+  organizerName,
+  organizerEmail,
+  collectionTitle,
+  collectionSlug,
+  totalCollected,
+  stockLimit,
+}) => {
+  const dashboardUrl = `${getAppBaseUrl()}/dashboard`;
+  const collectionUrl = `${getAppBaseUrl()}/c/${encodeURIComponent(String(collectionSlug || ''))}`;
+  const safeName = escapeHtml(organizerName || 'Organizer');
+  const safeTitle = escapeHtml(collectionTitle || 'your collection');
+  const safeDashboardUrl = escapeHtml(dashboardUrl);
+  const safeCollectionUrl = escapeHtml(collectionUrl);
+  const safeCollected = escapeHtml(formatNaira(totalCollected));
+  const safeStockLimit = escapeHtml(stockLimit ?? 0);
+
+  return sendEmail({
+    email: organizerEmail,
+    subject: `Sold out: ${collectionTitle || 'your WePay collection'}`,
+    htmlContent: `
+      <!doctype html>
+      <html><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#0f172a">
+        <main style="max-width:600px;margin:32px auto;background:#fff;border-radius:16px;padding:36px">
+          <p style="margin:0 0 8px;color:#b45309;font-size:13px;font-weight:bold;text-transform:uppercase;letter-spacing:1px">Inventory sold out</p>
+          <h1 style="margin:0 0 16px;color:#312e81">All slots are claimed, ${safeName}.</h1>
+          <p style="font-size:16px;line-height:1.6"><strong>${safeTitle}</strong> has sold all ${safeStockLimit} available units. Its public link is now closed to new payments.</p>
+          <p style="font-size:16px;line-height:1.6">Total collected: <strong>${safeCollected}</strong>.</p>
+          <a href="${safeCollectionUrl}" style="display:inline-block;margin-top:12px;padding:14px 22px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">View public collection</a>
+          <a href="${safeDashboardUrl}" style="display:inline-block;margin:12px 0 0 8px;padding:14px 22px;background:#e2e8f0;color:#0f172a;text-decoration:none;border-radius:8px;font-weight:bold">Open dashboard</a>
+        </main>
+      </body></html>`,
+  });
+};

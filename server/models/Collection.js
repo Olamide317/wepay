@@ -118,9 +118,11 @@ const collectionSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['ACTIVE', 'COMPLETED', 'PAUSED', 'CLOSED'],
+      enum: ['ACTIVE', 'COMPLETED', 'SOLD_OUT', 'PAUSED', 'CLOSED'],
       default: 'ACTIVE',
     },
+    targetReachedNotified: { type: Boolean, default: false },
+    soldOutNotified: { type: Boolean, default: false },
     expectedPayers: {
       type: [expectedPayerSchema],
       default: [],

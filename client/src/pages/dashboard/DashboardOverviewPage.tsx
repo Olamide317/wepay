@@ -364,16 +364,18 @@ export const DashboardOverviewPage: React.FC = () => {
                                     <span>Resume collection</span>
                                   </button>
                                 )}
-                                {col.status !== 'CLOSED' && col.status !== 'COMPLETED' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => openStatusConfirm(col, 'CLOSED')}
-                                    className="w-full text-left px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
-                                  >
-                                    <XCircle className="h-3.5 w-3.5" />
-                                    <span>Close collection</span>
-                                  </button>
-                                )}
+                                {col.status !== 'CLOSED' &&
+                                  col.status !== 'COMPLETED' &&
+                                  col.status !== 'SOLD_OUT' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => openStatusConfirm(col, 'CLOSED')}
+                                      className="w-full text-left px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <XCircle className="h-3.5 w-3.5" />
+                                      <span>Close collection</span>
+                                    </button>
+                                  )}
                               </div>
                             )}
                           </div>

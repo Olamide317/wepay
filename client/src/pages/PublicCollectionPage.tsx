@@ -532,7 +532,9 @@ export const PublicCollectionPage: React.FC = () => {
                 <div className="h-10 w-10 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
                   {collection.status === 'PAUSED' ? (
                     <PauseCircle className="h-5 w-5 text-amber-600" />
-                  ) : isTargetReached || collection.status === 'COMPLETED' ? (
+                  ) : isTargetReached ||
+                    collection.status === 'COMPLETED' ||
+                    collection.status === 'SOLD_OUT' ? (
                     <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                   ) : (
                     <AlertCircle className="h-5 w-5 text-red-600" />
@@ -544,7 +546,9 @@ export const PublicCollectionPage: React.FC = () => {
                       ? 'Collection Temporarily Paused'
                       : isOutOfStock
                       ? 'Stock Unavailable — Sold Out'
-                      : isTargetReached || collection.status === 'COMPLETED'
+                      : isTargetReached ||
+                        collection.status === 'COMPLETED' ||
+                        collection.status === 'SOLD_OUT'
                       ? 'Collection Completed'
                       : 'Collection Closed'}
                   </h2>
@@ -553,7 +557,9 @@ export const PublicCollectionPage: React.FC = () => {
                       ? 'The organizer has temporarily paused incoming payments for this collection. Please check back later.'
                       : isOutOfStock
                       ? 'All available stock units for this pre-order have been claimed.'
-                      : isTargetReached || collection.status === 'COMPLETED'
+                      : isTargetReached ||
+                        collection.status === 'COMPLETED' ||
+                        collection.status === 'SOLD_OUT'
                       ? 'This collection has reached its goal and is no longer accepting new payments.'
                       : 'This collection has been closed by the organizer and is no longer accepting payments.'}
                   </p>
@@ -654,7 +660,7 @@ export const PublicCollectionPage: React.FC = () => {
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
                     <Input
-                      label="Email address"
+                      label="Email Address (for digital receipt)"
                       type="email"
                       required
                       autoComplete="email"

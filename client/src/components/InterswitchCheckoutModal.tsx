@@ -126,7 +126,7 @@ export const InterswitchCheckoutModal: React.FC<InterswitchCheckoutModalProps> =
       txn_ref: params.txnRef,
       amount: String(params.amount),
       currency: 566,
-      cust_email: contributorEmail || 'contributor@wepay.ng',
+      cust_email: contributorEmail.trim(),
       site_redirect_url: new URL('/api/payments/redirect-return', apiBaseUrl).toString(),
       mode: checkoutMode,
       onComplete: async (response: Record<string, unknown>) => {
