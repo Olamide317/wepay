@@ -19,7 +19,7 @@ export const WePayLogo: React.FC<WePayLogoProps> = ({ variant = 'dark', size = '
         className={`${iconSize} shrink-0`}
         aria-hidden="true"
       >
-        <rect width="36" height="36" rx="9" fill="#4F46E5" />
+        <rect width="36" height="36" rx="9" fill="#0f766e" />
         {/* Interlocking collective nodes symbolizing group pooling and unified flow */}
         <path
           d="M9.5 13L13.5 23L18 14.5L22.5 23L26.5 13"
@@ -28,7 +28,7 @@ export const WePayLogo: React.FC<WePayLogoProps> = ({ variant = 'dark', size = '
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <circle cx="18" cy="10" r="1.75" fill="#A5B4FC" />
+        <circle cx="18" cy="10" r="1.75" fill="#f59e08" />
       </svg>
       <span className={`font-display font-bold tracking-tight ${textSize} ${textColor}`}>
         WePay

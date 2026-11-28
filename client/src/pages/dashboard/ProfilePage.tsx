@@ -6,12 +6,14 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input, Select } from '../../components/ui/FormControls';
 import { AlertBanner } from '../../components/ui/StateViews';
+import { useToast } from '../../components/ui/Toast';
 import { NIGERIAN_BANKS } from '../../constants/banks';
 import { useAuth } from '../../context/AuthContext';
 import { wepayService } from '../../services/wepayService';
 
 export const ProfilePage: React.FC = () => {
   const { organizer, setOrganizerState } = useAuth();
+  const { toast } = useToast();
 
   const [bankCode, setBankCode] = useState(organizer?.settlementBank?.bankCode || '');
   const [accountNumber, setAccountNumber] = useState(
@@ -69,6 +71,7 @@ export const ProfilePage: React.FC = () => {
       });
       setOrganizerState(res.organizer);
       setSaveSuccess(true);
+      toast('Settlement bank account saved successfully.', 'success');
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Unable to save bank details.');
     } finally {
@@ -128,7 +131,7 @@ export const ProfilePage: React.FC = () => {
 
         <Card className="md:col-span-7 space-y-4">
           <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="h-9 w-9 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
               <Building2 className="h-4 w-4" />
             </div>
             <div>

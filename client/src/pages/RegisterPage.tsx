@@ -8,7 +8,13 @@ import { Card } from '../components/ui/Card';
 import { Checkbox, Input } from '../components/ui/FormControls';
 import { AlertBanner } from '../components/ui/StateViews';
 import { useAuth } from '../context/AuthContext';
-import { formatDisplayName, isValidEmail, isValidNigerianPhone, slugify } from '../utils/formatters';
+import {
+  formatDisplayName,
+  getEmailTypoSuggestion,
+  isValidEmail,
+  isValidNigerianPhone,
+  slugify,
+} from '../utils/formatters';
 import fundingImage from '../assets/images/funding.jpg';
 
 interface RegisterErrors {
@@ -38,6 +44,7 @@ export const RegisterPage: React.FC = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
+  const emailSuggestion = getEmailTypoSuggestion(email);
 
   const validate = () => {
     const next: RegisterErrors = {};
@@ -96,12 +103,10 @@ export const RegisterPage: React.FC = () => {
 
   return (
     <div
-      className="relative min-h-screen flex flex-col justify-center px-4 py-10 bg-cover bg-center overflow-hidden"
-      style={{
-        backgroundImage: `linear-gradient(rgba(248, 250, 252, 0.68), rgba(248, 250, 252, 0.68)), url(${fundingImage})`,
-      }}
+      className="relative min-h-screen flex flex-col justify-center overflow-hidden bg-cover bg-center px-4 py-10"
+      style={{ backgroundImage: `url(${fundingImage})` }}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,255,255,0.72),transparent_38%)] pointer-events-none" aria-hidden="true" />
+      <div className="absolute inset-0 bg-[#f8fafc]/85" aria-hidden="true" />
       <BackButton className="absolute left-4 top-4 z-10 sm:left-6 sm:top-6" />
       <div className="relative w-full max-w-lg mx-auto space-y-6">
         <div className="flex flex-col items-center text-center space-y-2">
@@ -131,16 +136,34 @@ export const RegisterPage: React.FC = () => {
             />
 
             <div className="grid sm:grid-cols-2 gap-4">
-              <Input
-                label="Email address"
-                type="email"
-                required
-                autoComplete="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                error={errors.email}
-              />
+              <div className="space-y-1.5">
+                <Input
+                  label="Email address"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  error={errors.email}
+                />
+                {emailSuggestion && (
+                  <p className="text-xs text-slate-600">
+                    Did you mean{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail(emailSuggestion);
+                        setErrors((previous) => ({ ...previous, email: undefined }));
+                      }}
+                      className="font-semibold text-teal-700 underline underline-offset-2"
+                    >
+                      {emailSuggestion}
+                    </button>
+                    ?
+                  </p>
+                )}
+              </div>
               <Input
                 label="Phone number"
                 type="tel"
@@ -218,7 +241,7 @@ export const RegisterPage: React.FC = () => {
 
         <p className="text-center text-sm text-slate-600">
           Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-700">
+          <Link to="/login" className="font-semibold text-teal-700 hover:text-teal-800">
             Sign in
           </Link>
         </p>

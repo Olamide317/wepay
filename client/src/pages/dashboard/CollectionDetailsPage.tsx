@@ -166,7 +166,7 @@ export const CollectionDetailsPage: React.FC = () => {
               size="sm"
               onClick={() => setConfirmNextStatus('PAUSED')}
             >
-              <PauseCircle className="h-4 w-4 text-amber-600" />
+              <PauseCircle className="h-4 w-4 text-[#f59e08]" />
               <span>Pause</span>
             </Button>
           )}
@@ -176,7 +176,7 @@ export const CollectionDetailsPage: React.FC = () => {
               size="sm"
               onClick={() => setConfirmNextStatus('ACTIVE')}
             >
-              <PlayCircle className="h-4 w-4 text-emerald-600" />
+              <PlayCircle className="h-4 w-4 text-teal-600" />
               <span>Resume</span>
             </Button>
           )}
@@ -209,7 +209,7 @@ export const CollectionDetailsPage: React.FC = () => {
                 <p className="text-xs font-medium text-slate-500">Target / Remaining</p>
                 <p className="text-sm font-mono-num text-slate-800 mt-1">
                   {formatNaira(collection.targetAmount)} ·{' '}
-                  <span className="font-semibold text-indigo-600">
+                  <span className="font-semibold text-teal-700">
                     {formatNaira(remainingTarget)} left
                   </span>
                 </p>
@@ -219,7 +219,7 @@ export const CollectionDetailsPage: React.FC = () => {
               <div className="text-left sm:text-right">
                 <p className="text-xs font-medium text-slate-500">Inventory Availability</p>
                 <p className="text-sm font-mono-num text-slate-800 mt-1">
-                  <span className="font-semibold text-indigo-600">{remainingStock}</span> remaining
+                  <span className="font-semibold text-teal-700">{remainingStock}</span> remaining
                   of {collection.stockLimit} ({collection.stockSold ?? 0} sold)
                 </p>
               </div>
@@ -329,7 +329,7 @@ export const CollectionDetailsPage: React.FC = () => {
                     </span>
                     <span
                       className={`text-xs font-medium shrink-0 ${
-                        field.required ? 'text-indigo-700' : 'text-slate-500'
+                        field.required ? 'text-teal-700' : 'text-slate-500'
                       }`}
                     >
                       {field.required ? 'Required' : 'Optional'}
@@ -361,7 +361,7 @@ export const CollectionDetailsPage: React.FC = () => {
           </h2>
           <Link
             to={`/dashboard/collections/${collection._id}/ledger`}
-            className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+            className="text-xs font-semibold text-teal-700 hover:text-teal-800"
           >
             Open Full Ledger ({transactions.length}) →
           </Link>

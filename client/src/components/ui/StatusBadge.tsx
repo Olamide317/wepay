@@ -14,7 +14,7 @@ const STATUS_STYLE: Record<
 > = {
   ACTIVE: {
     label: 'Active',
-    classes: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    classes: 'bg-teal-50 text-teal-700 border-teal-200',
     Icon: CheckCircle2,
   },
   SUCCESS: {
@@ -24,17 +24,17 @@ const STATUS_STYLE: Record<
   },
   COMPLETED: {
     label: 'Completed',
-    classes: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    classes: 'bg-slate-100 text-slate-700 border-slate-200',
     Icon: CheckCircle2,
   },
   PAUSED: {
     label: 'Paused',
-    classes: 'bg-amber-50 text-amber-700 border-amber-200',
+    classes: 'bg-[#f59e08]/10 text-[#92400e] border-[#f59e08]/30',
     Icon: PauseCircle,
   },
   PENDING: {
     label: 'Pending',
-    classes: 'bg-amber-50 text-amber-700 border-amber-200',
+    classes: 'bg-[#f59e08]/10 text-[#92400e] border-[#f59e08]/30',
     Icon: Clock,
   },
   FAILED: {

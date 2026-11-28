@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Clock,
   Download,
+  MessageCircle,
   Printer,
   RefreshCw,
   XCircle,
@@ -160,6 +161,13 @@ export const ReceiptPage: React.FC = () => {
     typeof window !== 'undefined'
       ? `${window.location.origin}/receipt/${tx.receiptCode}`
       : `/receipt/${tx.receiptCode}`;
+  const whatsappReceiptText = [
+    `WePay receipt for ${collection.title}`,
+    `Amount: ${formatNaira(tx.totalPaid)}`,
+    `Receipt code: ${tx.receiptCode}`,
+    `Verify: ${receiptUrl}`,
+  ].join('\n');
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappReceiptText)}`;
 
   return (
     <PublicLayout maxWidth="md">
@@ -175,6 +183,17 @@ export const ReceiptPage: React.FC = () => {
           </Link>
 
           <div className="flex items-center gap-2">
+            {tx.status === 'SUCCESS' && (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-teal-700 bg-teal-700 px-3 text-xs font-semibold text-white transition-colors hover:bg-teal-800"
+              >
+                <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Share Receipt on WhatsApp</span>
+              </a>
+            )}
             <Button variant="outline" size="sm" onClick={() => window.print()}>
               <Printer className="h-3.5 w-3.5" />
               <span>Print</span>
@@ -199,11 +218,11 @@ export const ReceiptPage: React.FC = () => {
           {/* Status Hero */}
           <div className="flex items-start gap-3">
             {tx.status === 'SUCCESS' ? (
-              <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <div className="h-10 w-10 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
                 <CheckCircle2 className="h-6 w-6" />
               </div>
             ) : tx.status === 'PENDING' ? (
-              <div className="h-10 w-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <div className="h-10 w-10 rounded-lg bg-[#f59e08]/10 text-[#92400e] flex items-center justify-center shrink-0">
                 <Clock className="h-6 w-6" />
               </div>
             ) : (
@@ -230,7 +249,7 @@ export const ReceiptPage: React.FC = () => {
           </div>
 
           {tx.status === 'PENDING' && (
-            <div className="no-print flex flex-wrap gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+            <div className="no-print flex flex-wrap gap-2 p-3 rounded-lg bg-[#f59e08]/10 border border-[#f59e08]/30">
               <Button
                 size="sm"
                 variant="outline"
@@ -333,14 +352,6 @@ export const ReceiptPage: React.FC = () => {
                 {formatDate(tx.paidAt || tx.createdAt, true)}
               </dd>
             </div>
-            {tx.receiptHash && (
-              <div className="py-2.5 flex justify-between gap-4">
-                <dt className="text-slate-500">Receipt Hash</dt>
-                <dd className="font-mono-num text-xs text-slate-600 break-all text-right max-w-[240px]">
-                  {tx.receiptHash}
-                </dd>
-              </div>
-            )}
           </dl>
 
           {/* QR Code Block */}
@@ -348,13 +359,13 @@ export const ReceiptPage: React.FC = () => {
             <div className="p-2.5 bg-white border border-slate-200 rounded-xl shrink-0">
               <QRCodeSVG
                 value={receiptUrl}
-                size={104}
+                size={144}
                 level="M"
                 bgColor="#FFFFFF"
                 fgColor="#0F172A"
               />
             </div>
-            <div className="space-y-1 text-center sm:text-left">
+            <div className="min-w-0 space-y-1 text-center sm:text-left">
               <p className="text-xs font-semibold text-slate-900">
                 Cryptographically Verified QR Receipt
               </p>
@@ -362,6 +373,11 @@ export const ReceiptPage: React.FC = () => {
                 Scan to open <span className="font-mono-num">{tx.receiptCode}</span> against the
                 WePay backend receipt endpoint.
               </p>
+              {tx.receiptHash && (
+                <p className="break-all font-mono-num text-[10px] leading-relaxed text-slate-500">
+                  SHA-256: {tx.receiptHash}
+                </p>
+              )}
             </div>
           </div>
         </Card>

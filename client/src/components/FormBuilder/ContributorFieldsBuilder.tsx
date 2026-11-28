@@ -267,7 +267,7 @@ export const ContributorFieldsBuilder: React.FC<ContributorFieldsBuilderProps> =
                       key={field.id}
                       className={`p-3.5 rounded-xl border transition-colors ${
                         isEditingThis
-                          ? 'border-indigo-600 bg-indigo-50/40'
+                          ? 'border-teal-600 bg-teal-50/40'
                           : 'border-slate-200 bg-slate-50/70'
                       }`}
                     >
@@ -288,7 +288,7 @@ export const ContributorFieldsBuilder: React.FC<ContributorFieldsBuilderProps> =
                               type="button"
                               onClick={() => toggleRequiredQuick(field.id)}
                               className={`text-xs font-medium hover:underline cursor-pointer ${
-                                field.required ? 'text-indigo-700' : 'text-slate-500'
+                                field.required ? 'text-teal-700' : 'text-slate-500'
                               }`}
                             >
                               {field.required ? 'Required' : 'Optional'}
@@ -332,7 +332,7 @@ export const ContributorFieldsBuilder: React.FC<ContributorFieldsBuilderProps> =
                             type="button"
                             onClick={() => openEditEditor(field)}
                             aria-label={`Edit ${field.label}`}
-                            className="h-8 w-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-indigo-700 cursor-pointer"
+                            className="h-8 w-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-teal-700 cursor-pointer"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
@@ -367,7 +367,7 @@ export const ContributorFieldsBuilder: React.FC<ContributorFieldsBuilderProps> =
 
             {/* Add / Edit Field Configuration Panel */}
             {editorOpen && (
-              <div className="p-4 sm:p-5 rounded-xl border border-indigo-200 bg-slate-50 space-y-4">
+              <div className="p-4 sm:p-5 rounded-xl border border-teal-200 bg-slate-50 space-y-4">
                 <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-200">
                   <h3 className="text-sm font-semibold text-slate-900">
                     {editingId ? 'Edit Custom Field' : 'Configure New Field'}
@@ -474,7 +474,7 @@ export const ContributorFieldsBuilder: React.FC<ContributorFieldsBuilderProps> =
                             onChange={(e) => handleOptionChange(idx, e.target.value)}
                             aria-label={`Option ${idx + 1}`}
                             placeholder={`Option ${idx + 1}`}
-                            className="flex-1 h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600"
+                            className="flex-1 h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600"
                           />
                           <button
                             type="button"
@@ -502,7 +502,7 @@ export const ContributorFieldsBuilder: React.FC<ContributorFieldsBuilderProps> =
                         }}
                         placeholder="Type new answer option..."
                         aria-label="New answer option"
-                        className="flex-1 h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600"
+                        className="flex-1 h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600"
                       />
                       <Button
                         type="button"
@@ -556,7 +556,7 @@ export const ContributorFieldsBuilder: React.FC<ContributorFieldsBuilderProps> =
               </Button>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 space-y-4">
+            <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 space-y-4 shadow-lg shadow-slate-900/15">
               {/* Standard baseline fields context */}
               <div className="space-y-3 pb-3 border-b border-slate-100 opacity-75">
                 <p className="text-xs font-medium text-slate-500">

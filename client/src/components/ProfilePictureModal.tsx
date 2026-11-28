@@ -7,7 +7,6 @@ import { AlertBanner } from './ui/StateViews';
 interface ProfilePictureModalProps {
   open: boolean;
   file: File | null;
-  isMockMode: boolean;
   onClose: () => void;
   onConfirm: (croppedBlob: Blob, fileName: string) => Promise<void>;
 }
@@ -18,7 +17,6 @@ const OUTPUT_SIZE = 512;
 export const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
   open,
   file,
-  isMockMode,
   onClose,
   onConfirm,
 }) => {
@@ -277,7 +275,7 @@ export const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
                   disabled={saving}
                   onChange={(e) => setZoom(Number(e.target.value))}
                   aria-label="Zoom level"
-                  className="flex-1 accent-indigo-600 cursor-pointer"
+                  className="flex-1 accent-teal-600 cursor-pointer"
                 />
                 <button
                   type="button"
@@ -312,13 +310,6 @@ export const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
               {naturalSize ? ` · ${naturalSize.width}×${naturalSize.height}px` : ''}
             </span>
           </div>
-        )}
-
-        {isMockMode && (
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Prototype Sandbox Mode: Your picture will be saved locally in browser IndexedDB storage
-            (not uploaded to a remote server).
-          </p>
         )}
 
         <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-200">

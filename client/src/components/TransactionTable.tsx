@@ -35,7 +35,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   return (
     <>
       {/* Desktop / Tablet High-Density Table */}
-      <div className="hidden md:block bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="hidden md:block bg-white border border-slate-200 rounded-xl overflow-hidden shadow-lg shadow-slate-900/15">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -77,7 +77,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                       <td className="py-3 px-4 align-top">
                         <Link
                           to={`/dashboard/collections/${tx.collectionId}`}
-                          className="font-medium text-slate-800 hover:text-indigo-600 transition-colors"
+                          className="font-medium text-slate-800 hover:text-teal-700 transition-colors"
                         >
                           {tx.collectionTitle || 'Collection'}
                         </Link>
@@ -112,7 +112,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                     <td className="py-3 px-4 align-top text-right">
                       <Link
                         to={`/receipt/${tx.receiptCode}`}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 whitespace-nowrap"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-teal-700 hover:text-teal-800 whitespace-nowrap"
                       >
                         <Receipt className="h-3.5 w-3.5" />
                         <span>View</span>
@@ -133,7 +133,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
           return (
             <div
               key={tx._id}
-              className="bg-white border border-slate-200 rounded-xl p-4 space-y-3"
+              className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-lg shadow-slate-900/15"
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -178,7 +178,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                 <span className="font-mono-num truncate max-w-[180px]">{tx.txnRef}</span>
                 <Link
                   to={`/receipt/${tx.receiptCode}`}
-                  className="inline-flex items-center gap-1 font-medium text-indigo-600"
+                  className="inline-flex items-center gap-1 font-medium text-teal-700"
                 >
                   <Receipt className="h-3.5 w-3.5" />
                   <span>Receipt</span>

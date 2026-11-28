@@ -16,7 +16,7 @@ const PAD_CLASSES: Record<NonNullable<CardProps['padding']>, string> = {
 export const Card: React.FC<CardProps> = ({ children, className = '', padding = 'md' }) => {
   return (
     <div
-      className={`bg-white border border-slate-200/90 rounded-2xl shadow-[0_20px_56px_-18px_rgba(15,23,42,0.42)] ${PAD_CLASSES[padding]} ${className}`}
+      className={`bg-white border border-[#e2e8f0] rounded-xl shadow-[0_12px_32px_rgba(15,23,42,0.06)] ${PAD_CLASSES[padding]} ${className}`}
     >
       {children}
     </div>

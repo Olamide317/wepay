@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Check,
   CheckCircle2,
@@ -11,13 +11,14 @@ import {
   Users,
   Wand2,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ContributorFieldsBuilder } from '../../components/FormBuilder/ContributorFieldsBuilder';
 import { ShareCollectionModal } from '../../components/ShareCollectionModal';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input, Select, Textarea } from '../../components/ui/FormControls';
 import { AlertBanner } from '../../components/ui/StateViews';
+import { useToast } from '../../components/ui/Toast';
 import { useAuth } from '../../context/AuthContext';
 import { wepayService } from '../../services/wepayService';
 import { Collection, CollectionType, CustomField, PricingRule } from '../../types/wepay';
@@ -29,6 +30,7 @@ interface FormErrors {
   amount?: string;
   targetAmount?: string;
   stockLimit?: string;
+  maxQuantityPerOrder?: string;
 }
 
 const AI_PRESET_PROMPTS = [
@@ -39,6 +41,13 @@ const AI_PRESET_PROMPTS = [
 
 export const CreateCollectionPage: React.FC = () => {
   const { organizer } = useAuth();
+  const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const requestedType = searchParams.get('type');
+  const initialType: CollectionType =
+    requestedType === 'POOL' || requestedType === 'OPEN' || requestedType === 'INVENTORY'
+      ? requestedType
+      : 'POOL';
   const settlementBank = organizer?.settlementBank;
   const hasSettlementBank = Boolean(
     settlementBank?.bankCode &&
@@ -51,7 +60,7 @@ export const CreateCollectionPage: React.FC = () => {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiNotice, setAiNotice] = useState<string | null>(null);
 
-  const [type, setType] = useState<CollectionType>('POOL');
+  const [type, setType] = useState<CollectionType>(initialType);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [pricingRule, setPricingRule] = useState<PricingRule>('FIXED');
@@ -66,10 +75,15 @@ export const CreateCollectionPage: React.FC = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const submissionInProgress = useRef(false);
 
   const [createdCollection, setCreatedCollection] = useState<Collection | null>(null);
   const [copied, setCopied] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+
+  useEffect(() => {
+    setType(initialType);
+  }, [initialType]);
 
   const handleGenerateWithAi = async (promptOverride?: string) => {
     const query = (promptOverride ?? aiPrompt).trim();
@@ -111,27 +125,31 @@ export const CreateCollectionPage: React.FC = () => {
     }
   };
 
-  const validate = (): boolean => {
+  const validate = (): { message: string; fieldId: string } | null => {
     const next: FormErrors = {};
-    if (!title.trim() || title.trim().length < 3) {
+    if (!title.trim()) {
+      next.title = 'Collection title is required.';
+    } else if (title.trim().length < 3) {
       next.title = 'Collection title must be at least 3 characters.';
     }
-    if (!description.trim() || description.trim().length < 10) {
-      next.description = 'Provide a short description (at least 10 characters) for contributors.';
+    if (!description.trim()) {
+      next.description = 'Your description cannot be empty.';
+    } else if (description.trim().length < 10) {
+      next.description = 'Your description must be at least 10 characters.';
     }
 
     const numAmount = Number(amount);
     if (pricingRule !== 'FLEXIBLE') {
-      if (!amount || Number.isNaN(numAmount) || numAmount < 100) {
+      if (!amount || !Number.isFinite(numAmount) || numAmount < 100) {
         next.amount = 'Enter a valid Naira amount (minimum ₦100).';
       }
     }
 
     if (type === 'POOL') {
       const numTarget = Number(targetAmount);
-      if (!targetAmount || Number.isNaN(numTarget) || numTarget < 500) {
+      if (!targetAmount || !Number.isFinite(numTarget) || numTarget < 500) {
         next.targetAmount = 'Target amount must be at least ₦500.';
-      } else if (pricingRule === 'FIXED' && numAmount > numTarget) {
+      } else if (pricingRule === 'FIXED' && Number.isFinite(numAmount) && numAmount > numTarget) {
         next.amount = 'Contribution amount cannot exceed the pool target.';
       }
     }
@@ -143,12 +161,35 @@ export const CreateCollectionPage: React.FC = () => {
       }
     }
 
+    if (type === 'INVENTORY' && maxQuantityPerOrder) {
+      const numMaxQuantity = Number(maxQuantityPerOrder);
+      if (!Number.isInteger(numMaxQuantity) || numMaxQuantity < 1 || numMaxQuantity > 20) {
+        next.maxQuantityPerOrder = 'Max units per order must be a whole number from 1 to 20.';
+      }
+    }
+
     setErrors(next);
-    return Object.keys(next).length === 0;
+    const firstInvalidField = Object.keys(next)[0] as keyof FormErrors | undefined;
+    if (!firstInvalidField) return null;
+
+    const fieldIds: Record<keyof FormErrors, string> = {
+      title: 'collection-title',
+      description: 'collection-description',
+      amount: 'collection-amount',
+      targetAmount: 'collection-target-amount',
+      stockLimit: 'collection-stock-limit',
+      maxQuantityPerOrder: 'collection-max-quantity',
+    };
+    return {
+      message: next[firstInvalidField]!,
+      fieldId: fieldIds[firstInvalidField],
+    };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submissionInProgress.current) return;
+
     setSubmitError(null);
     if (!hasSettlementBank) {
       setSubmitError(
@@ -156,8 +197,20 @@ export const CreateCollectionPage: React.FC = () => {
       );
       return;
     }
-    if (!validate()) return;
+    const validationError = validate();
+    if (validationError) {
+      toast(validationError.message, 'error');
+      window.requestAnimationFrame(() => {
+        const invalidField = document.getElementById(validationError.fieldId);
+        if (invalidField instanceof HTMLElement) {
+          invalidField.focus({ preventScroll: true });
+          invalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+      return;
+    }
 
+    submissionInProgress.current = true;
     setSubmitting(true);
     try {
       const orderedFields = customFields.map((f, idx) => ({ ...f, order: idx }));
@@ -175,12 +228,14 @@ export const CreateCollectionPage: React.FC = () => {
         customFields: orderedFields,
         expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
       });
+      toast('Collection created successfully.', 'success');
       setCreatedCollection(collection);
     } catch (err) {
       setSubmitError(
         err instanceof Error ? err.message : 'Unable to create collection. Please try again.'
       );
     } finally {
+      submissionInProgress.current = false;
       setSubmitting(false);
     }
   };
@@ -205,7 +260,7 @@ export const CreateCollectionPage: React.FC = () => {
       <div className="max-w-2xl mx-auto py-4 space-y-6">
         <Card padding="lg">
           <div className="text-center space-y-4">
-            <div className="h-12 w-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+            <div className="h-12 w-12 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center mx-auto">
               <CheckCircle2 className="h-7 w-7" />
             </div>
             <div>
@@ -290,11 +345,11 @@ export const CreateCollectionPage: React.FC = () => {
       )}
 
       {/* AI Smart Collection Builder */}
-      <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50/80 via-white to-slate-50">
+      <Card className="border-slate-200 bg-white">
         <div className="space-y-3.5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
+              <div className="h-9 w-9 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0">
                 <Sparkles className="h-4 w-4" />
               </div>
               <div>
@@ -320,7 +375,7 @@ export const CreateCollectionPage: React.FC = () => {
                 }
               }}
               placeholder="e.g. Split ₦75,000 Starlink bill among 5 roommates..."
-              className="flex-1 h-10 px-3.5 rounded-lg border border-indigo-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600"
+              className="flex-1 h-10 px-3.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-teal-700 focus:border-teal-700"
             />
             <Button
               type="button"
@@ -340,7 +395,7 @@ export const CreateCollectionPage: React.FC = () => {
                 key={preset}
                 type="button"
                 onClick={() => handleGenerateWithAi(preset)}
-                className="text-[11px] px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-700 hover:border-indigo-300 hover:text-indigo-700 transition-colors cursor-pointer"
+                className="text-[11px] px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-700 hover:border-teal-300 hover:text-teal-800 transition-colors cursor-pointer"
               >
                 {preset}
               </button>
@@ -348,8 +403,8 @@ export const CreateCollectionPage: React.FC = () => {
           </div>
 
           {aiNotice && (
-            <div className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+            <div className="text-xs text-teal-800 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2 flex items-center gap-2">
+              <CheckCircle2 className="h-3.5 w-3.5 text-teal-600 shrink-0" />
               <span>{aiNotice}</span>
             </div>
           )}
@@ -377,20 +432,20 @@ export const CreateCollectionPage: React.FC = () => {
                   [
                     {
                       id: 'POOL',
-                      title: 'Bill Split / Group Pool',
-                      desc: 'Collect towards a target amount that closes automatically once reached.',
+                      title: 'SPLIT',
+                      desc: 'Assign structured obligations and track paid and unpaid participants toward a target.',
                       Icon: Users,
                     },
                     {
                       id: 'OPEN',
-                      title: 'Open Collection / Dues',
-                      desc: 'Accept ongoing contributions or student dues with no hard target cap.',
+                      title: 'FLEXIBLE',
+                      desc: 'Accept community contributions of any amount toward a shared cause or due.',
                       Icon: Layers,
                     },
                     {
                       id: 'INVENTORY',
-                      title: 'Merchant Pre-Order',
-                      desc: 'Sell finite stock units with quantity limits and fulfillment questions.',
+                      title: 'INVENTORY',
+                      desc: 'Sell limited products or tickets with unit prices, stock limits and buyer fields.',
                       Icon: Package,
                     },
                   ] as const
@@ -404,14 +459,14 @@ export const CreateCollectionPage: React.FC = () => {
                       aria-pressed={selected}
                       className={`text-left p-4 rounded-xl border transition-all cursor-pointer flex flex-col gap-2.5 ${
                         selected
-                          ? 'border-indigo-600 bg-indigo-50/70 ring-1 ring-indigo-600'
+                          ? 'border-teal-700 bg-teal-50 ring-1 ring-teal-700'
                           : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
                       }`}
                     >
                       <div
                         className={`h-9 w-9 rounded-lg flex items-center justify-center ${
                           selected
-                            ? 'bg-indigo-600 text-white'
+                            ? 'bg-teal-700 text-white'
                             : 'bg-slate-100 text-slate-600'
                         }`}
                       >
@@ -445,6 +500,7 @@ export const CreateCollectionPage: React.FC = () => {
               <Input
                 label={type === 'INVENTORY' ? 'Product / Pre-Order Title' : 'Collection Title'}
                 required
+                id="collection-title"
                 placeholder={
                   type === 'POOL'
                     ? 'e.g. November Starlink Subscription'
@@ -460,6 +516,7 @@ export const CreateCollectionPage: React.FC = () => {
               <Textarea
                 label="Description"
                 required
+                id="collection-description"
                 rows={3}
                 placeholder={
                   type === 'INVENTORY'
@@ -510,6 +567,7 @@ export const CreateCollectionPage: React.FC = () => {
                     type="number"
                     min={100}
                     required
+                    id="collection-amount"
                     leftAddon="₦"
                     placeholder={type === 'INVENTORY' ? '2500' : '15000'}
                     value={amount}
@@ -524,6 +582,7 @@ export const CreateCollectionPage: React.FC = () => {
                     type="number"
                     min={500}
                     required
+                    id="collection-target-amount"
                     leftAddon="₦"
                     placeholder="75000"
                     value={targetAmount}
@@ -539,6 +598,7 @@ export const CreateCollectionPage: React.FC = () => {
                       type="number"
                       min={1}
                       required
+                      id="collection-stock-limit"
                       placeholder="30"
                       value={stockLimit}
                       onChange={(e) => setStockLimit(e.target.value)}
@@ -549,8 +609,10 @@ export const CreateCollectionPage: React.FC = () => {
                       type="number"
                       min={1}
                       max={20}
+                      id="collection-max-quantity"
                       value={maxQuantityPerOrder}
                       onChange={(e) => setMaxQuantityPerOrder(e.target.value)}
+                      error={errors.maxQuantityPerOrder}
                     />
                   </>
                 )}
@@ -581,7 +643,7 @@ export const CreateCollectionPage: React.FC = () => {
                     onClick={() => setPassFeeToPayer(true)}
                     className={`text-left p-3.5 rounded-xl border transition-colors cursor-pointer ${
                       passFeeToPayer
-                        ? 'border-indigo-600 bg-indigo-50/70'
+                        ? 'border-teal-700 bg-teal-50'
                         : 'border-slate-200 bg-white hover:bg-slate-50'
                     }`}
                   >
@@ -597,7 +659,7 @@ export const CreateCollectionPage: React.FC = () => {
                     onClick={() => setPassFeeToPayer(false)}
                     className={`text-left p-3.5 rounded-xl border transition-colors cursor-pointer ${
                       !passFeeToPayer
-                        ? 'border-indigo-600 bg-indigo-50/70'
+                        ? 'border-teal-700 bg-teal-50'
                         : 'border-slate-200 bg-white hover:bg-slate-50'
                     }`}
                   >
