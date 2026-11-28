@@ -212,7 +212,6 @@ export const wepayService = {
     message: string,
     currentPath: string
   ): Promise<AiNavigatorResponse> {
-<<<<<<< HEAD
     if (isBackendConfigured()) {
       return apiRequest<AiNavigatorResponse>(
         '/api/ai/navigate',
@@ -332,21 +331,6 @@ export const wepayService = {
       },
       source: 'smart-fallback',
     };
-=======
-    return apiRequest<AiNavigatorResponse>(
-      '/api/ai/navigate',
-      { method: 'POST', body: JSON.stringify({ message, currentPath }) },
-      false
-    );
-  },
-
-  async draftCollectionWithAi(prompt: string): Promise<{ draft: AiCollectionDraft; source: 'gemini' | 'smart-fallback' }> {
-    return apiRequest<{ draft: AiCollectionDraft; source: 'gemini' | 'smart-fallback' }>(
-      '/api/ai/draft-collection',
-      { method: 'POST', body: JSON.stringify({ prompt }) },
-      true
-    );
->>>>>>> 032fd78438db8006491bb34ed92c96b5600174c4
   },
 
   async askOrganizerLedger(question: string): Promise<AiLedgerAnswer> {

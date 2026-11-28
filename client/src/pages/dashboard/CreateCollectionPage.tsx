@@ -73,19 +73,15 @@ const AI_PRESET_PROMPTS = [
 
 export const CreateCollectionPage: React.FC = () => {
   const { organizer } = useAuth();
-<<<<<<< HEAD
-  const { showToast } = useToast();
+  const { toast } = useToast();
   const [draftRestored, setDraftRestored] = useState(false);
   const storageErrorShown = useRef(false);
-=======
-  const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const requestedType = searchParams.get('type');
   const initialType: CollectionType =
     requestedType === 'POOL' || requestedType === 'OPEN' || requestedType === 'INVENTORY'
       ? requestedType
       : 'POOL';
->>>>>>> 032fd78438db8006491bb34ed92c96b5600174c4
   const settlementBank = organizer?.settlementBank;
   const hasSettlementBank = Boolean(
     settlementBank?.bankCode &&
@@ -120,7 +116,6 @@ export const CreateCollectionPage: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
-<<<<<<< HEAD
   const persistDraft = (notifyStorageError = true): boolean => {
     try {
       window.sessionStorage.setItem(CREATE_COLLECTION_DRAFT_KEY, JSON.stringify({
@@ -142,7 +137,7 @@ export const CreateCollectionPage: React.FC = () => {
     } catch {
       if (notifyStorageError && !storageErrorShown.current) {
         storageErrorShown.current = true;
-        showToast('WePay could not save this draft in this tab. Keep this page open while you finish creating your collection.', 'error');
+        toast('WePay could not save this draft in this tab. Keep this page open while you finish creating your collection.', 'error');
       }
       return false;
     }
@@ -172,11 +167,11 @@ export const CreateCollectionPage: React.FC = () => {
         if (Array.isArray(draft.aiAuditTips)) setAiAuditTips(draft.aiAuditTips.filter((tip): tip is string => typeof tip === 'string'));
       }
     } catch {
-      showToast('WePay could not restore your saved collection draft. You can continue entering your details here.', 'error');
+      toast('WePay could not restore your saved collection draft. You can continue entering your details here.', 'error');
     } finally {
       setDraftRestored(true);
     }
-  }, [showToast]);
+  }, [toast]);
 
   useEffect(() => {
     if (draftRestored) persistDraft();
@@ -196,11 +191,14 @@ export const CreateCollectionPage: React.FC = () => {
     aiPrompt,
     aiAuditTips,
   ]);
-=======
+
   useEffect(() => {
-    setType(initialType);
+    try {
+      if (!window.sessionStorage.getItem(CREATE_COLLECTION_DRAFT_KEY)) setType(initialType);
+    } catch {
+      setType(initialType);
+    }
   }, [initialType]);
->>>>>>> 032fd78438db8006491bb34ed92c96b5600174c4
 
   const handleGenerateWithAi = async (promptOverride?: string) => {
     const query = (promptOverride ?? aiPrompt).trim();
@@ -250,11 +248,7 @@ export const CreateCollectionPage: React.FC = () => {
     }
   };
 
-<<<<<<< HEAD
   const validate = (): FormErrors => {
-=======
-  const validate = (): { message: string; fieldId: string } | null => {
->>>>>>> 032fd78438db8006491bb34ed92c96b5600174c4
     const next: FormErrors = {};
     if (!title.trim()) {
       next.title = 'Collection title is required.';
@@ -268,11 +262,7 @@ export const CreateCollectionPage: React.FC = () => {
     }
 
     const numAmount = Number(amount);
-<<<<<<< HEAD
     if (pricingRule !== 'FLEXIBLE' || type === 'INVENTORY') {
-=======
-    if (pricingRule !== 'FLEXIBLE') {
->>>>>>> 032fd78438db8006491bb34ed92c96b5600174c4
       if (!amount || !Number.isFinite(numAmount) || numAmount < 10) {
         next.amount = 'Enter a valid Naira amount (minimum ₦10).';
       }
@@ -302,25 +292,7 @@ export const CreateCollectionPage: React.FC = () => {
     }
 
     setErrors(next);
-<<<<<<< HEAD
     return next;
-=======
-    const firstInvalidField = Object.keys(next)[0] as keyof FormErrors | undefined;
-    if (!firstInvalidField) return null;
-
-    const fieldIds: Record<keyof FormErrors, string> = {
-      title: 'collection-title',
-      description: 'collection-description',
-      amount: 'collection-amount',
-      targetAmount: 'collection-target-amount',
-      stockLimit: 'collection-stock-limit',
-      maxQuantityPerOrder: 'collection-max-quantity',
-    };
-    return {
-      message: next[firstInvalidField]!,
-      fieldId: fieldIds[firstInvalidField],
-    };
->>>>>>> 032fd78438db8006491bb34ed92c96b5600174c4
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -338,36 +310,44 @@ export const CreateCollectionPage: React.FC = () => {
     if (validationErrors.amount) issueMessages.push(`Amount: ${validationErrors.amount}`);
     if (validationErrors.targetAmount) issueMessages.push(`Target Amount: ${validationErrors.targetAmount}`);
     if (validationErrors.stockLimit) issueMessages.push(`Stock Limit: ${validationErrors.stockLimit}`);
+    if (validationErrors.maxQuantityPerOrder) issueMessages.push(`Max Units Per Order: ${validationErrors.maxQuantityPerOrder}`);
 
     if (issueMessages.length > 0) {
       const draftSaved = persistDraft(false);
-      showToast(
+      toast(
         `Cannot publish yet: ${issueMessages.join('; ')}. ${
           draftSaved ? 'Your form draft is saved.' : 'Browser storage is unavailable; keep this page open to retain your input.'
         }`,
         'error'
       );
+      const fieldIds: Record<keyof FormErrors, string> = {
+        title: 'collection-title',
+        description: 'collection-description',
+        amount: 'collection-amount',
+        targetAmount: 'collection-target-amount',
+        stockLimit: 'collection-stock-limit',
+        maxQuantityPerOrder: 'collection-max-quantity',
+      };
+      const firstInvalidField = Object.keys(validationErrors)[0] as keyof FormErrors | undefined;
+      const focusId = firstInvalidField
+        ? fieldIds[firstInvalidField]
+        : !hasSettlementBank
+        ? 'settlement-bank-details-link'
+        : undefined;
+      if (focusId) {
+        window.requestAnimationFrame(() => {
+          const invalidField = document.getElementById(focusId);
+          if (invalidField instanceof HTMLElement) {
+            invalidField.focus({ preventScroll: true });
+            invalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      }
       return;
     }
-<<<<<<< HEAD
 
     persistDraft();
-=======
-    const validationError = validate();
-    if (validationError) {
-      toast(validationError.message, 'error');
-      window.requestAnimationFrame(() => {
-        const invalidField = document.getElementById(validationError.fieldId);
-        if (invalidField instanceof HTMLElement) {
-          invalidField.focus({ preventScroll: true });
-          invalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      });
-      return;
-    }
-
     submissionInProgress.current = true;
->>>>>>> 032fd78438db8006491bb34ed92c96b5600174c4
     setSubmitting(true);
     try {
       const orderedFields = customFields.map((f, idx) => ({ ...f, order: idx }));
@@ -385,15 +365,12 @@ export const CreateCollectionPage: React.FC = () => {
         customFields: orderedFields,
         expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
       });
-<<<<<<< HEAD
       try {
         window.sessionStorage.removeItem(CREATE_COLLECTION_DRAFT_KEY);
       } catch {
-        showToast('Your collection was created, but the saved draft could not be cleared from this tab.', 'info');
+        toast('Your collection was created, but the saved draft could not be cleared from this tab.', 'info');
       }
-=======
       toast('Collection created successfully.', 'success');
->>>>>>> 032fd78438db8006491bb34ed92c96b5600174c4
       setCreatedCollection(collection);
     } catch (err) {
       setSubmitError(
@@ -501,6 +478,7 @@ export const CreateCollectionPage: React.FC = () => {
           message="Add your bank account before you publish. Your collection draft will be here when you return."
           action={
             <Link
+              id="settlement-bank-details-link"
               to="/dashboard/profile?returnTo=%2Fdashboard%2Fcreate"
               state={{ returnTo: '/dashboard/create' }}
             >
@@ -542,13 +520,8 @@ export const CreateCollectionPage: React.FC = () => {
                   handleGenerateWithAi();
                 }
               }}
-<<<<<<< HEAD
               placeholder="e.g. Split the ₦75,000 Starlink bill among 5 roommates..."
-              className="flex-1 h-10 px-3.5 rounded-lg border border-indigo-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600"
-=======
-              placeholder="e.g. Split ₦75,000 Starlink bill among 5 roommates..."
               className="flex-1 h-10 px-3.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-teal-700 focus:border-teal-700"
->>>>>>> 032fd78438db8006491bb34ed92c96b5600174c4
             />
             <Button
               type="button"
@@ -617,35 +590,20 @@ export const CreateCollectionPage: React.FC = () => {
                   [
                     {
                       id: 'POOL',
-<<<<<<< HEAD
                       title: 'Bill Split & Group Pool',
                       desc: 'Split a shared bill or pool funds toward a fixed target — like a ₦75,000 Starlink subscription or group gift.',
-=======
-                      title: 'SPLIT',
-                      desc: 'Assign structured obligations and track paid and unpaid participants toward a target.',
->>>>>>> 032fd78438db8006491bb34ed92c96b5600174c4
                       Icon: Users,
                     },
                     {
                       id: 'OPEN',
-<<<<<<< HEAD
                       title: 'Open Collection & Dues',
                       desc: 'Collect departmental dues, levies, or open group contributions with instant receipt tracking.',
-=======
-                      title: 'FLEXIBLE',
-                      desc: 'Accept community contributions of any amount toward a shared cause or due.',
->>>>>>> 032fd78438db8006491bb34ed92c96b5600174c4
                       Icon: Layers,
                     },
                     {
                       id: 'INVENTORY',
-<<<<<<< HEAD
                       title: 'Pre-Order & Event Tickets',
                       desc: 'Sell limited-stock items, snack boxes, or event tickets with automatic stock locking and buyer fields.',
-=======
-                      title: 'INVENTORY',
-                      desc: 'Sell limited products or tickets with unit prices, stock limits and buyer fields.',
->>>>>>> 032fd78438db8006491bb34ed92c96b5600174c4
                       Icon: Package,
                     },
                   ] as const

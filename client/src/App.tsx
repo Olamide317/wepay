@@ -20,7 +20,6 @@ import { MyCollectionsPage } from './pages/dashboard/MyCollectionsPage';
 import { ProfilePage } from './pages/dashboard/ProfilePage';
 import { ToastProvider } from './components/ui/Toast';
 import { WePayAiNavigator } from './components/WePayAiNavigator';
-import { ToastProvider } from './components/ui/Toast';
 
 const FounderAdminGuard: React.FC = () => {
   const { organizer, isLoading } = useAuth();
@@ -39,16 +38,6 @@ const FounderAdminGuard: React.FC = () => {
 
 export function App() {
   return (
-<<<<<<< HEAD
-    <AuthProvider>
-      <ToastProvider>
-        <BrowserRouter>
-          <WePayAiNavigator />
-          <Routes>
-            {/* Default Root Route: WePay Overview */}
-            <Route path="/" element={<OrganizerLayout requireAuth={false} />}>
-              <Route index element={<ProductOverviewPage />} />
-=======
     <ToastProvider>
       <AuthProvider>
         <BrowserRouter>
@@ -66,22 +55,6 @@ export function App() {
             <Route path="/u/:handle" element={<OrganizerHubPage />} />
             <Route path="/receipt/:code" element={<ReceiptPage />} />
 
-          <Route element={<FounderAdminGuard />}>
-            <Route path="/admin" element={<OrganizerLayout />}>
-              <Route index element={<FounderAdminPage />} />
->>>>>>> 032fd78438db8006491bb34ed92c96b5600174c4
-            </Route>
-
-            {/* Public Routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
-            <Route path="/c/:slug" element={<PublicCollectionPage />} />
-            <Route path="/u/:handle" element={<OrganizerHubPage />} />
-            <Route path="/receipt/:code" element={<ReceiptPage />} />
-
-<<<<<<< HEAD
             <Route element={<FounderAdminGuard />}>
               <Route path="/admin" element={<OrganizerLayout />}>
                 <Route index element={<FounderAdminPage />} />
@@ -104,16 +77,8 @@ export function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
-      </ToastProvider>
-    </AuthProvider>
-=======
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
       </AuthProvider>
     </ToastProvider>
->>>>>>> 032fd78438db8006491bb34ed92c96b5600174c4
   );
 }
 
